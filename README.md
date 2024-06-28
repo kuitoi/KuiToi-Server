@@ -13,81 +13,11 @@ I didn't like writing plugins in Lua after using Python; it was very inconvenien
 
 ## TODOs
 
-- [x] Server core:
-  - [x] BeamMP System:
-    - [x] Private access (Without key, Direct connect)
-    - [x] Public access  (With key, listing in Launcher)
-    - [X] Player authentication
-  - [x] TCP Server part:
-    - [x] Handle code
-    - [x] Understanding BeamMP header
-    - [x] Upload mods
-    - [x] Connecting to the world
-    - [x] Chat
-    - [x] Players online counter
-    - [x] Packets handled (Recursive finding second packet)
-    - [x] Client events
-    - [x] Car synchronizations:
-      - [x] State packets
-      - [x] Spawn cars
-      - [x] Delete cars
-      - [x] Edit cars
-      - [x] Reset cars
-    - [x] "ABG": (compressed data)
-      - [x] Decompress data
-      - [x] Compress data
-  - [x] UDP Server part:
-    - [x] Ping
-    - [x] Position synchronizations
-- [x] Additional:
-  - [x] Logger:
-    - [x] Just logging
-    - [x] Log in file
-    - [x] Log history (.1.log, .2.log, ...)
-  - [x] Console:
-    - [x] Tabulation
-    - [x] History
-    - [x] Autocomplete
-  - [x] Events System:
-    - [x] Call events
-    - [x] Create custom events
-    - [x] Return from events
-    - [x] Async support
-    - [x] Add all events
-  - [x] MultiLanguage: (i18n support)
-    - [x] Core
-    - [x] Console
-    - [x] WebAPI
-  - [x] Plugins supports:
-    - [x] Python part:
-      - [x] Load Python plugins
-      - [x] Async support
-      - [x] KuiToi class
-      - [x] Client (Player) class
-    - [x] Lua part: (Original BeamMP compatibility)
-      - [x] Load Lua plugins
-      - [x] MP Class
-      - [x] Util class
-      - [x] FS class
-  - [ ] HTTP API Server: (fastapi)
-    - [x] Stop and Start with core
-    - [x] Configure FastAPI logger
-    - [ ] Sync with event system
-    - [ ] Add methods...
-  - [ ] RCON System:
-    - [x] Serving
-    - [ ] Handle commands
-    - [x] Client
-    - [x] AES encryption
-  - [ ] KuiToi System
-    - [ ] Servers counter
-    - [ ] Players counter
-    - [ ] Etc.
-- [ ] [Documentation](./docs)
+[TODO.md](./TODO.md)
 
 ## Installation
 
-1. Install **Python 3.10**
+1. Install **Python 3.12**+
 2. Clone the repository in a location of your choice with: `git clone -b Stable https://github.com/kuitoi/kuitoi-Server.git`.
 3. Change directory into the KuiToi-Server: `cd KuiToi-Server`.
 4. Install requirements: `pip install -r requirements.txt`.

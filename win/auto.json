@@ -7,7 +7,7 @@
   },
   {
    "optionDest": "filenames",
-   "value": "C:/Users/Santa/PycharmProjects/kuitoi-Server/src/main.py"
+   "value": "../src/main.py"
   },
   {
    "optionDest": "onefile",
@@ -19,15 +19,11 @@
   },
   {
    "optionDest": "icon_file",
-   "value": "C:/Users/Santa/PycharmProjects/kuitoi-Server/win-logo.ico"
+   "value": "./icon.ico"
   },
   {
    "optionDest": "name",
    "value": "KuiToi-Server"
-  },
-  {
-   "optionDest": "ascii",
-   "value": true
   },
   {
    "optionDest": "clean_build",
@@ -47,11 +43,7 @@
   },
   {
    "optionDest": "version_file",
-   "value": "C:/Users/Santa/PycharmProjects/kuitoi-Server/win-ver_info.txt"
-  },
-  {
-   "optionDest": "embed_manifest",
-   "value": true
+   "value": "./metadata.txt"
   },
   {
    "optionDest": "uac_admin",
@@ -62,19 +54,11 @@
    "value": false
   },
   {
-   "optionDest": "win_private_assemblies",
-   "value": false
-  },
-  {
-   "optionDest": "win_no_prefer_redirects",
+   "optionDest": "argv_emulation",
    "value": false
   },
   {
    "optionDest": "bootloader_ignore_signals",
-   "value": false
-  },
-  {
-   "optionDest": "argv_emulation",
    "value": false
   }
  ],

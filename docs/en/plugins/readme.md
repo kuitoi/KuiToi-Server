@@ -31,7 +31,7 @@ def my_event_handler(event_data):
 
 def load():
     # Plugin initialization
-    kt.register_event("my_event", my_event_handler)
+    kt.register("my_event", my_event_handler)
     log.info("Plugin loaded successfully.")
 
     
@@ -50,7 +50,7 @@ def unload():
 A more comprehensive example can also be found in [example.py](examples/example.py)
 
 * It is recommended to use `open()` after `load()`, otherwise use `kt.load()` - It creates a file in the `plugin/<plugin_name>/<filename>` folder.
-* Creating your own event: `kt.register_event("my_event", my_event_function)` - 
+* Creating your own event: `kt.register("my_event", my_event_function)` - 
 * Calling an event: `kt.call_event("my_event")`
 * Calling an event with data: `kt.call_event("my_event", data, data2=data2)`
 * Base events: _To be added later_
@@ -75,7 +75,7 @@ async def my_event_handler(event_data):
     
 async def load():
     # Plugin initialization
-    kt.register_event("my_event", my_event_handler)
+    kt.register("my_event", my_event_handler)
     log.info("Plugin loaded successfully.")
 
 
@@ -94,7 +94,7 @@ async def unload():
 
 A more comprehensive example can also be found in [async_example.py](examples/async_example.py)
 
-* Creating your own event: `kt.register_event("my_event", my_event_function)` (register_event has a function check)
+* Creating your own event: `kt.register("my_event", my_event_function)` (register has a function check)
 * Calling an async event: `kt.call_async_event("my_event")`
 * Calling an async event with data: `kt.call_async_event("my_event", data, data2=data2)`
 * Base async events: _To be added later_

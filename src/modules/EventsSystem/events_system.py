@@ -68,6 +68,7 @@ class EventsSystem:
             "onFileChanged": [],  # TODO lua onFileChanged
             "onConsoleInput": [],  # kt.add_command
         }
+        self.register_event = self.register
 
     def builtins_hook(self):
         self.log.debug("used builtins_hook")
@@ -78,8 +79,8 @@ class EventsSystem:
                 event_name in self.__events.keys() or
                 event_name in self.__lua_events.keys())
 
-    def register_event(self, event_name, event_func, async_event=False, lua=None):
-        self.log.debug(f"register_event(event_name='{event_name}', event_func='{event_func}', "
+    def register(self, event_name, event_func, async_event=False, lua=None):
+        self.log.debug(f"register(event_name='{event_name}', event_func='{event_func}', "
                        f"async_event={async_event}, lua_event={lua}):")
         if lua:
             if event_name not in self.__lua_events:

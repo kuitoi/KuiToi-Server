@@ -3,7 +3,7 @@
 # Written by: SantaSpeen
 # Core version: 0.4.5
 # Licence: FPA
-# (c) kuitoi.su 2023
+# (c) kuitoi.su 2024
 import asyncio
 import json
 
@@ -109,4 +109,5 @@ class UDPServer(asyncio.DatagramTransport):
 
     def _stop(self):
         self.log.debug("Stopping UDP server")
-        self.transport.close()
+        if self.transport:
+            self.transport.close()

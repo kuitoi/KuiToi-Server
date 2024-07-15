@@ -28,7 +28,7 @@ def my_event_handler(event_data):
 
 def load():
     # Инициализация плагина
-    ev.register_event("my_event", my_event_handler)
+    ev.register("my_event", my_event_handler)
     log.info("Плагин загружен успешно.")
 
     
@@ -46,7 +46,7 @@ def unload():
 Так же более обширный пример можно найти в [example.py](examples/example.py)
 
 * Рекомендуется использовать `open()` после `load()`, иначе стоит использовать `kt.load()` - Создаёт файл в папке `plugin/<plugin_name>/<filename>`
-* Создание своего ивента : `kt.register_event("my_event", my_event_function)` - 
+* Создание своего ивента : `kt.register("my_event", my_event_function)` - 
 * Вызов ивента: `kt.call_event("my_event")`
 * Вызов ивента с данными: `kt.call_event("my_event", data, data2=data2)`
 * Базовые ивенты: _Позже напишу_
@@ -71,7 +71,7 @@ async def my_event_handler(event_data):
     
 async def load():
     # Инициализация плагина
-    ev.register_event("my_event", my_event_handler)
+    ev.register("my_event", my_event_handler)
     log.info("Плагин загружен успешно.")
 
 
@@ -90,7 +90,7 @@ async def unload():
 
 Так же более обширный пример можно найти в [async_example.py](examples/async_example.py)
 
-* Создание своего ивента: `kt.register_event("my_event", my_event_function)` (в register_event стоит проверка на функцию)
+* Создание своего ивента: `kt.register("my_event", my_event_function)` (в register стоит проверка на функцию)
 * Вызов async ивента: `kt.call_async_event("my_event")`
 * Вызов async ивента: `kt.call_async_event("my_event", data, data2=data2)`
 * Базовые async ивенты: _Позже напишу_

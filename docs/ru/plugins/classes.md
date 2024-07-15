@@ -23,7 +23,7 @@ _Константа_\
 _Параметры как у open()_\
 Открывает файл в kt.dir
 
-### kt.register_event(event_name: str, event_func: function)
+### kt.register(event_name: str, event_func: function)
 _`event_name: str` -> Имя ивента, по которому будет вызвана `event_func`._\
 _`event_func: function` -> Функция, которая будет вызвана._
 

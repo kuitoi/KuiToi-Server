@@ -28,7 +28,7 @@ def my_event_handler(event_data):
 
 def load():
     # 初始化插件
-    ev.register_event("my_event", my_event_handler)
+    ev.register("my_event", my_event_handler)
     log.info("插件已成功加载。")
 
     
@@ -47,7 +47,7 @@ def unload():
 您还可以在[example.py](examples/example.py)中找到更广泛的示例。
 
 * 建议在`load()`后使用`open()`，否则应使用`kt.load()`-在`plugin/<plugin_name>/<filename>`文件夹中创建一个文件
-* 创建自己的事件：`kt.register_event("my_event", my_event_function)`-
+* 创建自己的事件：`kt.register("my_event", my_event_function)`-
 * 调用事件：`kt.call_event("my_event")`
 * 使用数据调用事件：`kt.call_event("my_event", data, data2=data2)`
 * 基本事件：_稍后会写_
@@ -72,7 +72,7 @@ async def my_event_handler(event_data):
     
 async def load():
     # 初始化插件
-    ev.register_event("my_event", my_event_handler)
+    ev.register("my_event", my_event_handler)
     log.info("插件已成功加载。")
 
 
@@ -91,7 +91,7 @@ async def unload():
 
 您还可以在[async_example.py](examples/async_example.py)中找到更广泛的示例。
 
-* 创建自己的事件：`kt.register_event("my_event", my_event_function)`（在register_event中检查函数）
+* 创建自己的事件：`kt.register("my_event", my_event_function)`（在register中检查函数）
 * 调用async事件：`kt.call_async_event("my_event")`
 * 使用数据调用async事件：`kt.call_async_event("my_event", data, data2=data2)`
 * 基本的async事件：_稍后会写_

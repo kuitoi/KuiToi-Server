@@ -23,7 +23,7 @@ Returns the directory of the plugin
 _Parameters are the same as for open()_\
 Opens a file in kt.dir
 
-### kt.register_event(event_name: str, event_func: function)
+### kt.register(event_name: str, event_func: function)
 _`event_name: str` -> The name of the event that `event_func` will be called on._\
 _`event_func: function` -> The function that will be called._
 

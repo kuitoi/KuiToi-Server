@@ -88,7 +88,7 @@ class MP:
 
     def RegisterEvent(self, event_name: str, function_name: str) -> None:
         self.log.debug("request MP.RegisterEvent()")
-        ev.register_event(event_name, function_name, lua=self._lua)
+        ev.register(event_name, function_name, lua=self._lua)
         if event_name not in self._local_events:
             self._local_events.update({str(event_name): [function_name]})
         else:
@@ -577,8 +577,8 @@ class LuaPluginsLoader:
         self.lua_dirs = set()
         self.log = get_logger("LuaPluginsLoader")
         self.loaded_str = "Lua plugins: "
-        ev.register_event("_lua_plugins_get", lambda x: self.lua_plugins)
-        ev.register_event("_lua_plugins_unload", self.unload)
+        ev.register("_lua_plugins_get", lambda x: self.lua_plugins)
+        ev.register("_lua_plugins_unload", self.unload)
         console.add_command("lua_plugins", lambda x: self.loaded_str[:-2])
         console.add_command("lua_pl", lambda x: self.loaded_str[:-2])
 

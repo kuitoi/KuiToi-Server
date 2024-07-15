@@ -23,7 +23,7 @@ _常量_\
 _与open()参数相同_\
 在kt.dir中打开文件
 
-### kt.register_event(event_name: str, event_func: function)
+### kt.register(event_name: str, event_func: function)
 _`event_name: str` -> 作为`event_func`调用的事件名称._\
 _`event_func: function` -> 要调用的函数._
 

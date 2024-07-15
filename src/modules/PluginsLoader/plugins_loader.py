@@ -57,9 +57,9 @@ class KuiToi:
             if f is not None:
                 f.close()
 
-    def register_event(self, event_name, event_func):
+    def register(self, event_name, event_func):
         self.log.debug(f"Registering event {event_name}")
-        ev.register_event(event_name, event_func)
+        ev.register(event_name, event_func)
 
     def call_event(self, event_name, *args, **kwargs):
         self.log.debug(f"Called event {event_name}")
@@ -105,9 +105,9 @@ class PluginsLoader:
         self.plugins_dir = plugins_dir
         self.log = get_logger("PluginsLoader")
         self.loaded_str = "Plugins: "
-        ev.register_event("_plugins_start", self.start)
-        ev.register_event("_plugins_unload", self.unload)
-        ev.register_event("_plugins_get", lambda x: list(self.plugins.keys()))
+        ev.register("_plugins_start", self.start)
+        ev.register("_plugins_unload", self.unload)
+        ev.register("_plugins_get", lambda x: list(self.plugins.keys()))
         console.add_command("plugins", lambda x: self.loaded_str[:-2])
         console.add_command("pl", lambda x: self.loaded_str[:-2])
 

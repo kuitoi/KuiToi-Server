@@ -1,6 +1,6 @@
-from typing import Dict
+### Builtins
 
-
+```python
 class Config:
     Auth: Dict[str, object]
     Game: Dict[str, object]
@@ -12,3 +12,4 @@ class Config:
     def __repr__(self):
         return "%s(Auth=%r, Game=%r, Server=%r)" % (self.__class__.__name__, self.Auth, self.Game, self.Server)
 class config (Config): ...
+```

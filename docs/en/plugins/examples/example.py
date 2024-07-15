@@ -21,7 +21,7 @@ def load():
         json.dump(config, f)
         cgf = config
     log.info(cgf)
-    ev.register_event("my_event", my_event_handler)
+    ev.register("my_event", my_event_handler)
     log.info("Плагин загружен успешно.")
 
 

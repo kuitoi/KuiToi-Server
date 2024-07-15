@@ -47,7 +47,7 @@ class Core:
         self.lock_upload = False
 
         self.client_major_version = "2.0"
-        self.BeamMP_version = "3.1.1"  # 20.07.2023
+        self.BeamMP_version = "3.4.1"  # 20.07.2023
 
         ev.register("_get_BeamMP_version", lambda x: tuple([int(i) for i in self.BeamMP_version.split(".")]))
         ev.register("_get_player", lambda x: self.get_client(**x['kwargs']))

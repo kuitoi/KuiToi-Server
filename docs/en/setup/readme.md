@@ -34,7 +34,7 @@ Auth:
   private: true
 Game:
   map: gridmap_v2
-  max_cars: 1
+  cars: 1
   players: 8
 Options:
   debug: false
@@ -64,7 +64,7 @@ WebAPI:
 ### Game
 
 * `map` is only the name of the map, i.e. open the mod with the map in `map.zip/levels` - the name of the map will be there, that's what we insert.
-* `max_cars` - Maximum number of cars per player
+* `cars` - Maximum number of cars per player
 * `players` - Maximum number of players
 
 ### Options

@@ -1,6 +1,6 @@
-from typing import Any
+### Builtins
 
-
+```python
 class EventsSystem:
     @staticmethod
     def register(event_name, event_func, async_event: bool = False, lua: bool | object = None): ...
@@ -11,3 +11,4 @@ class EventsSystem:
     @staticmethod
     def call_lua_event(event_name, *data) -> list[Any]: ...
 class ev(EventsSystem): ...
+```

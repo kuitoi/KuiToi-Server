@@ -9,6 +9,7 @@ import json
 import math
 import time
 import zlib
+from asyncio import Lock
 
 from core import utils
 
@@ -40,6 +41,7 @@ class Client:
         self._snowman = {"id": -1, "packet": ""}
         self._connect_time = 0
         self._last_position = {}
+        self._lock = Lock()
 
     @property
     def _writer(self):
@@ -193,7 +195,6 @@ class Client:
             writer.write(header + data)
             await writer.drain()
             return True
-
         except Exception as e:
             self.log.debug(f'[TCP] Disconnected: {e}')
             self.__alive = False
@@ -413,7 +414,7 @@ class Client:
             pass
         pkt = f"Os:{self.roles}:{self.nick}:{self.cid}-{car_id}:{car_data}"
         snowman = car_json.get("jbm") == "unicycle"
-        if allow and config.Game['max_cars'] > cars_count or (snowman and allow_snowman) or over_spawn:
+        if allow and config.Game['cars'] > cars_count or (snowman and allow_snowman) or over_spawn:
             if snowman:
                 unicycle_id = self._snowman['id']
                 if unicycle_id != -1:

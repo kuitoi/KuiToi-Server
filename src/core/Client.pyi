@@ -5,7 +5,7 @@
 # Licence: FPA
 # (c) kuitoi.su 2023
 import asyncio
-from asyncio import StreamReader, StreamWriter, DatagramTransport
+from asyncio import StreamReader, StreamWriter, DatagramTransport, Lock
 from logging import Logger
 from typing import Tuple, List, Dict, Optional, Union, Any
 
@@ -39,6 +39,8 @@ class Client:
         self._cars: List[Union[Dict[str, Union[str, bool, Dict[str, Union[str, List[int], float]]]], None]] = []
         self._snowman: Dict[str, Union[int, str]]  = {"id": -1, "packet": ""}
         self._last_position = {}
+        self._lock = Lock()
+
     async def __gracefully_kick(self): ...
     @property
     def _writer(self) -> StreamWriter: ...

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # Developed by KuiToi Dev
-# File modules.config_provider.__init__.py
+# File modules.ConfigProvider
 # Written by: SantaSpeen
 # Version 1.0
 # Licence: FPA
@@ -15,7 +15,7 @@ import yaml
 class Config:
     def __init__(self, auth=None, game=None, server=None, rcon=None, options=None, web=None):
         self.Auth = auth or {"key": None, "private": True}
-        self.Game = game or {"map": "gridmap_v2", "players": 8, "max_cars": 1}
+        self.Game = game or {"map": "gridmap_v2", "players": 8, "cars": 1}
         self.Server = server or {"name": "KuiToi-Server", "description": "Welcome to KuiToi Server!",
                                  "server_ip": "0.0.0.0", "server_port": 30814}
         self.RCON = rcon or {"enabled": False, "server_ip": "127.0.0.1", "server_port": 10383,

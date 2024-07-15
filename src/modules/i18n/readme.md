@@ -1,3 +1,6 @@
+### Builtins
+
+```python
 class i18n:
     # Basic phases
     hello: str
@@ -107,3 +110,5 @@ class i18n:
     # Command: exit
     man_message_exit: str
     help_message_exit: str
+
+```

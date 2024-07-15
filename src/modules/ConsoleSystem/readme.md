@@ -1,18 +1,10 @@
-from logging import Logger
-from typing import AnyStr
+### Builtins
 
-from core import get_logger
-
-
+```python
 class RCONSystem:
     console = None
 
-    def __init__(self, key, host, port):
-        self.log = get_logger("RCON")
-        self.key = key
-        self.host = host
-        self.port = port
-
+    def __init__(self, key, host, port): ...
     async def start(self): ...
     async def stop(self): ...
 
@@ -35,3 +27,4 @@ class console:
     def write(s: str) -> None: ...
     @staticmethod
     def __lshift__(s: AnyStr) -> None: ...
+```

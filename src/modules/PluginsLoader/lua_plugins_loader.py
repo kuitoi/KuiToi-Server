@@ -598,7 +598,7 @@ class LuaPluginsLoader:
                 "LogChat": config.Options['log_chat'],
                 "Debug": config.Options['debug'],
                 "Private": config.Auth['private'],
-                "MaxCars": config.Game['max_cars'],
+                "MaxCars": config.Game['cars'],
                 "MaxPlayers": config.Game['players'],
                 "Map": f"/levels/{config.Game['map']}/info.json",
                 "Description": config.Server['description'],

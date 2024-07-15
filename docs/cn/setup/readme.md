@@ -34,7 +34,7 @@ Auth:
   private: true
 Game:
   map: gridmap_v2
-  max_cars: 1
+  cars: 1
   players: 8
 Options:
   debug: false
@@ -64,7 +64,7 @@ WebAPI:
 ### Game
 
 * `map` 仅为地图名称，即打开具有地图的 mod 在 `map.zip/levels` - 地图名称将在那里，那就是我们插入的地方。
-* `max_cars` - 每个玩家的最大汽车数量
+* `cars` - 每个玩家的最大汽车数量
 * `players` - 最大玩家数
 
 ### Options

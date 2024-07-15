@@ -10,6 +10,7 @@ from typing import Tuple
 
 from core import utils, Core
 from core.Client import Client
+from modules import RateLimiter
 
 
 class TCPServer:
@@ -20,6 +21,8 @@ class TCPServer:
         self.host = host
         self.port = port
         self.run = False
+        self.rl = RateLimiter(50, 10, 15)
+
     async def auth_client(self, reader: StreamReader, writer: StreamWriter) -> Tuple[bool, Client]: ...
     async def set_down_rw(self, reader: StreamReader, writer: StreamWriter) -> bool: ...
     async def handle_code(self, code: str, reader: StreamReader, writer: StreamWriter) -> Tuple[bool, Client]: ...

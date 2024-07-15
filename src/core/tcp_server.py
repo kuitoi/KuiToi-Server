@@ -10,6 +10,7 @@ import traceback
 import aiohttp
 
 from core import utils
+from modules import RateLimiter
 
 
 # noinspection PyProtectedMember
@@ -21,6 +22,7 @@ class TCPServer:
         self.host = host
         self.port = port
         self.run = False
+        self.rl = RateLimiter(50, 10, 300)
 
     async def auth_client(self, reader, writer):
         client = self.Core.create_client(reader, writer)
@@ -31,7 +33,8 @@ class TCPServer:
             await client.kick(i18n.core_player_kick_outdated)
             return False, client
         else:
-            await client._send(b"S")  # Accepted client version
+            # await client._send(b"S")  # Accepted client version
+            await client._send(b"A")  # Accepted client version
 
         data = await client._recv(True)
         self.log.debug(f"Key: {data}")
@@ -58,7 +61,8 @@ class TCPServer:
             # noinspection PyProtectedMember
             client._update_logger()
         except Exception as e:
-            self.log.error(f"Auth error: {e}")
+            self.log.error("Auth error.")
+            self.log.exception(e)
             await client.kick(i18n.core_player_kick_auth_server_fail)
             return False, client
 
@@ -74,9 +78,9 @@ class TCPServer:
         lua_data = ev.call_lua_event("onPlayerAuth", client.nick, client.roles, client.guest, client.identifiers)
         for data in lua_data:
             if 1 == data:
-                allow = True
+                allow = False
             elif isinstance(data, str):
-                allow = True
+                allow = False
                 reason = data
         if not allow:
             await client.kick(reason)
@@ -103,7 +107,7 @@ class TCPServer:
                 self.log.debug(f"Client: {client.nick}:{cid} - HandleDownload!")
             else:
                 writer.close()
-                self.log.debug(f"Unknown client id:{cid} - HandleDownload")
+                self.log.debug(f"Unknown client <nick>:{cid} - HandleDownload")
         finally:
             return
 
@@ -129,6 +133,10 @@ class TCPServer:
     async def handle_client(self, reader, writer):
         while True:
             try:
+                ip = writer.get_extra_info('peername')[0]
+                if self.rl.is_banned(ip):
+                    self.rl.notify(ip, writer)
+                    break
                 data = await reader.read(1)
                 if not data:
                     break
@@ -139,7 +147,6 @@ class TCPServer:
                 _, cl = await self.handle_code(code, reader, writer)
                 if cl:
                     await cl._remove_me()
-                    del cl
                 break
             except Exception as e:
                 self.log.error("Error while handling connection...")

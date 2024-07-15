@@ -23,6 +23,8 @@ class TCPServer:
         self.port = port
         self.run = False
         self.rl = RateLimiter(50, 10, 300)
+        console.add_command("rl", self.rl.parse_console, None, "RateLimiter menu",
+                            {"rl": {"info": None, "unban": None, "ban": None, "help": None}})
 
     async def auth_client(self, reader, writer):
         client = self.Core.create_client(reader, writer)

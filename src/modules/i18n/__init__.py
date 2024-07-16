@@ -65,7 +65,6 @@ class MultiLanguage:
             "core_player_kick_stale": "Stale client. (Replaced by new connection)",
             "core_player_kick_no_allowed_default_reason": "You are not welcome on this server. Access denied.",
             "core_player_kick_server_full": "Server is full.",
-            "core_player_set_id": "Player set ID {}",
             "core_identifying_okay": "Successful login.",
             "game_welcome_message": "Welcome {}!",
             "client_mod_request": "Requested mod: {}",

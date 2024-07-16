@@ -11,6 +11,8 @@ import json
 import os
 from json import JSONDecodeError
 
+import requests
+
 from core.utils import get_logger
 
 
@@ -119,16 +121,14 @@ class MultiLanguage:
         self.files_dir = files_dir
         self.log = get_logger("i18n")
         self.fi = False
-        self.set_language(language)
+        self.lang_url = "https://raw.githubusercontent.com/KuiToi/KuiToi-Server/Stable/src/translates/"
 
-    def set_language(self, language="en"):
-        if self.language == language and self.fi:
+    def set_language(self, language):
+        if language == self.language:
             return
-        else:
-            self.fi = True
-            self.log.debug(f"set_language({language})")
-            self.language = language
-            self.open_file()
+        self.log.debug(f"set_language({language})")
+        self.language = language
+        self.open_file()
         self.__i18n = i18n(self.__data)
 
     def open_file(self):
@@ -142,7 +142,16 @@ class MultiLanguage:
             self.log.error(
                 f"Localisation \"{file}\" have JsonDecodeError. Using default localisation: en.")
         except FileNotFoundError:
-            self.log.warning(f"Localisation \"{file}\" not found; Using default localisation: en.")
+            r = requests.get(f"{self.lang_url}{self.language}.json")
+            if r.status_code != 404:
+                self.log.info(f"Downloaded new localisation: {self.language}")
+                loc = r.json()
+                with open(file, "w", encoding=self.__encoding) as f:
+                    json.dump(loc, f)
+                self.__data.update(loc)
+                return
+            else:
+                self.log.warning(f"Localisation \"{file}\" not found; Using default localisation: en.")
         self.set_language("en")
 
     def builtins_hook(self) -> None:

@@ -399,7 +399,7 @@ class Client:
         except Exception as e:
             self.log.debug(f"Invalid car_json: Error: {e}; Data: {car_data}")
         allow = True
-        allow_snowman = True
+        allow_unicycle = True
         over_spawn = False
         lua_data = ev.call_lua_event("onVehicleSpawn", self.cid, car_id, car_data[car_data.find("{"):])
         if 1 in lua_data:
@@ -412,9 +412,9 @@ class Client:
             # TODO: handle event onCarSpawn
             pass
         pkt = f"Os:{self.roles}:{self.nick}:{self.cid}-{car_id}:{car_data}"
-        snowman = car_json.get("jbm") == "unicycle"
-        if allow and config.Game['cars'] > cars_count or (snowman and allow_snowman) or over_spawn:
-            if snowman:
+        unicycle = car_json.get("jbm") == "unicycle"
+        if allow and config.Game['cars'] > cars_count or (unicycle and allow_unicycle) or over_spawn:
+            if unicycle:
                 unicycle_id = self._unicycle['id']
                 if unicycle_id != -1:
                     self.log.debug(f"Delete old unicycle: car_id={unicycle_id}")
@@ -429,8 +429,8 @@ class Client:
                 "packet": pkt,
                 "json": car_json,
                 "json_ok": bool(car_json),
-                "snowman": snowman,
-                "over_spawn": (snowman and allow_snowman) or over_spawn,
+                "unicycle": unicycle,
+                "over_spawn": (unicycle and allow_unicycle) or over_spawn,
                 "pos": {}
             }
             await self._send(pkt, to_all=True, to_self=True)
@@ -466,8 +466,8 @@ class Client:
             if cid == self.cid or admin_allow:
                 await self._send(raw_data, to_all=True, to_self=True)
                 car = self._cars[car_id]
-                if car['snowman']:
-                    self.log.debug(f"Snowman found")
+                if car['unicycle']:
+                    self.log.debug("unicycle found")
                     unicycle_id = self._unicycle['id']
                     self._unicycle['id'] = -1
                     self._cars[unicycle_id] = None

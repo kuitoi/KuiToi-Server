@@ -18,7 +18,7 @@ class UDPServer(asyncio.DatagramTransport):
         super().__init__()
         self.log = utils.get_logger("UDPServer")
         self.loop = asyncio.get_event_loop()
-        self.Core = core
+        self._core = core
         self.host = host
         self.port = port
         self.run = False
@@ -33,8 +33,10 @@ class UDPServer(asyncio.DatagramTransport):
             code = data[2:3].decode()
             data = data[2:].decode()
 
-            client = self.Core.get_client(cid=cid)
+            client = self._core.get_client(cid=cid)
             if client:
+                if not client.alive:
+                    self.log.debug(f"{client.nick}:{cid} still sending UDP data: {data}")
                 match code:
                     case "p":  # Ping packet
                         ev.call_event("onSentPing")
@@ -45,24 +47,26 @@ class UDPServer(asyncio.DatagramTransport):
                             self.log.debug(f"Set UDP Sock for CID: {cid}")
                         ev.call_event("onChangePosition", data=data)
                         sub = data.find("{", 1)
-                        last_pos_data = data[sub:]
+                        last_pos = data[sub:]
                         try:
-                            last_pos = json.loads(last_pos_data)
-                            client._last_position = last_pos
                             _, car_id = client._get_cid_vid(data)
-                            client._cars[car_id]['pos'] = last_pos
+                            if client._cars[car_id]:
+                                last_pos = json.loads(last_pos)
+                                client._last_position = last_pos
+                                client._cars[car_id]['pos'] = last_pos
                         except Exception as e:
-                            self.log.debug(f"Cannot parse position packet: {e}")
-                            self.log.debug(f"data: {data}, sup: {sub}")
-                            self.log.debug(f"last_pos_data: {last_pos_data}")
+                            self.log.warning(f"Cannot parse position packet: {e}")
+                            self.log.debug(f"data: '{data}', sup: {sub}")
+                            self.log.debug(f"last_pos ({type(last_pos)}): {last_pos}")
+                        await client._send(data, to_all=True, to_self=False, to_udp=True)
+                    case "X":
                         await client._send(data, to_all=True, to_self=False, to_udp=True)
                     case _:
-                        self.log.debug(f"[{cid}] Unknown code: {code}")
+                        self.log.warning(f" UDP [{cid}] Unknown code: {code}; {data}")
             else:
                 self.log.debug(f"[{cid}] Client not found.")
 
         except Exception as e:
-
             self.log.error(f"Error handle_datagram: {e}")
 
     def datagram_received(self, *args, **kwargs):
@@ -81,14 +85,14 @@ class UDPServer(asyncio.DatagramTransport):
 
     async def _start(self):
         self.log.debug("Starting UDP server.")
-        while self.Core.run:
+        while self._core.run:
             try:
 
                 await asyncio.sleep(0.2)
 
                 d = UDPServer
                 self.transport, p = await self.loop.create_datagram_endpoint(
-                    lambda: d(self.Core),
+                    lambda: d(self._core),
                     local_addr=(self.host, self.port)
                 )
                 d.transport = self.transport

@@ -41,7 +41,6 @@
   "core_player_kick_stale": "过时的客户端。（由新连接替换）",
   "core_player_kick_no_allowed_default_reason": "您不受欢迎。拒绝访问。",
   "core_player_kick_server_full": "服务器已满。",
-  "core_player_set_id": "玩家设置ID {}",
   "core_identifying_okay": "成功登录。",
 
   "": "游戏内短语",

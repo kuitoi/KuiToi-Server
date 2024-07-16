@@ -19,7 +19,7 @@ class Client:
     def __init__(self, reader, writer, core):
         self.__reader = reader
         self.__writer = writer
-        self.__Core = core
+        self._core = core
         self.__alive = True
         self.__packets_queue = []
         self.__tasks = []
@@ -38,7 +38,7 @@ class Client:
         self._identifiers = []
         self._cars = [None] * 21  # Max 20 cars per player + 1 snowman
         self._focus_car = -1
-        self._snowman = {"id": -1, "packet": ""}
+        self._unicycle = {"id": -1, "packet": ""}
         self._connect_time = 0
         self._last_position = {}
         self._lock = Lock()
@@ -155,7 +155,7 @@ class Client:
 
         if to_all:
             code = chr(data[0])
-            for client in self.__Core.clients:
+            for client in self._core.clients:
                 if not client or (client is self and not to_self):
                     continue
                 if not to_udp or code in ['V', 'W', 'Y', 'E']:
@@ -174,8 +174,7 @@ class Client:
             data = b"ABG:" + zlib.compress(data, level=zlib.Z_BEST_COMPRESSION)
 
         if to_udp:
-            udp_sock = self._udp_sock[0]
-            udp_addr = self._udp_sock[1]
+            udp_sock, udp_addr = self._udp_sock
             # self.log.debug(f'[UDP] len: {len(data)}; send: {data!r}')
             if udp_sock and udp_addr:
                 try:
@@ -297,7 +296,7 @@ class Client:
                 file = data[1:].decode(config.enc)
                 self.log.info(i18n.client_mod_request.format(repr(file)))
                 size = -1
-                for mod in self.__Core.mods_list:
+                for mod in self._core.mods_list:
                     if type(mod) == int:
                         continue
                     if mod.get('path') == file:
@@ -318,9 +317,9 @@ class Client:
                         await self.kick("Missing download socket")
                         return
                 if config.Options['use_queue']:
-                    while self.__Core.lock_upload:
+                    while self._core.lock_upload:
                         await asyncio.sleep(.2)
-                    self.__Core.lock_upload = True
+                    self._core.lock_upload = True
                 speed = config.Options["speed_limit"]
                 if speed:
                     speed = speed / 2
@@ -332,8 +331,8 @@ class Client:
                 ]
                 sl0, sl1 = await asyncio.gather(*uploads)
                 tr = (time.monotonic() - t) or 0.0001
-                if self.__Core.lock_upload:
-                    self.__Core.lock_upload = False
+                if self._core.lock_upload:
+                    self._core.lock_upload = False
                 msg = i18n.client_mod_sent.format(round(size / MB, 3), math.ceil(size / tr / MB), int(tr))
                 if speed:
                     msg += i18n.client_mod_sent_limit.format(int(speed * 2))
@@ -349,7 +348,7 @@ class Client:
             elif data.startswith(b"SR"):
                 path_list = ''
                 size_list = ''
-                for mod in self.__Core.mods_list:
+                for mod in self._core.mods_list:
                     if type(mod) == int:
                         continue
                     path_list += f"{mod['path']};"
@@ -391,7 +390,7 @@ class Client:
         car_data = data[2:]
         car_id = next((i for i, car in enumerate(self._cars) if car is None), len(self._cars))
         cars_count = len(self._cars) - self._cars.count(None)
-        if self._snowman['id'] != -1:
+        if self._unicycle['id'] != -1:
             cars_count -= 1  # -1 for unicycle
         self.log.debug(f"car_id={car_id}, cars_count={cars_count}")
         car_json = {}
@@ -416,12 +415,12 @@ class Client:
         snowman = car_json.get("jbm") == "unicycle"
         if allow and config.Game['cars'] > cars_count or (snowman and allow_snowman) or over_spawn:
             if snowman:
-                unicycle_id = self._snowman['id']
+                unicycle_id = self._unicycle['id']
                 if unicycle_id != -1:
-                    self.log.debug(f"Delete old unicycle: unicycle_id={unicycle_id}")
+                    self.log.debug(f"Delete old unicycle: car_id={unicycle_id}")
                     self._cars[unicycle_id] = None
                     await self._send(f"Od:{self.cid}-{unicycle_id}", to_all=True, to_self=True)
-                self._snowman = {"id": car_id, "packet": pkt}
+                self._unicycle = {"id": car_id, "packet": pkt}
                 self.log.debug(f"Unicycle spawn accepted: car_id={car_id}")
             else:
                 self.log.debug(f"Car spawn accepted: car_id={car_id}")
@@ -469,8 +468,8 @@ class Client:
                 car = self._cars[car_id]
                 if car['snowman']:
                     self.log.debug(f"Snowman found")
-                    unicycle_id = self._snowman['id']
-                    self._snowman['id'] = -1
+                    unicycle_id = self._unicycle['id']
+                    self._unicycle['id'] = -1
                     self._cars[unicycle_id] = None
                 self._cars[car_id] = None
                 await self._send(f"Od:{self.cid}-{car_id}", to_all=True, to_self=True)
@@ -482,7 +481,7 @@ class Client:
     async def _edit_car(self, raw_data, data):
         cid, car_id = self._get_cid_vid(raw_data)
         if car_id != -1 and self._cars[car_id]:
-            client = self.__Core.get_client(cid=cid)
+            client = self._core.get_client(cid=cid)
             if client:
                 car = client._cars[car_id]
                 new_car_json = {}
@@ -506,8 +505,8 @@ class Client:
 
                 if cid == self.cid or allow or admin_allow:
                     if car['snowman']:
-                        unicycle_id = self._snowman['id']
-                        self._snowman['id'] = -1
+                        unicycle_id = self._unicycle['id']
+                        self._unicycle['id'] = -1
                         self.log.debug(f"Delete snowman")
                         await self._send(f"Od:{self.cid}-{unicycle_id}", to_all=True, to_self=True)
                         self._cars[unicycle_id] = None
@@ -593,7 +592,7 @@ class Client:
         await self._send(f"Sn{self.nick}", to_all=True)  # I don't know for what it
         await self._send(f"J{i18n.game_welcome_message.format(self.nick)}", to_all=True)  # Hello message
 
-        for client in self.__Core.clients:
+        for client in self._core.clients:
             if not client:
                 continue
             for car in client._cars:
@@ -656,20 +655,18 @@ class Client:
             self.__alive = False
             return
 
-        # Codes: V W X Y
-        if 89 >= data[0] >= 86:
-            await self._send(data, to_all=True, to_self=False)
-            return
-
         _bytes = False
         try:
             data = data.decode()
         except UnicodeDecodeError:
             _bytes = True
             self.log.error(f"UnicodeDecodeError: {data}")
-            self.log.info("Some things are skipping...")
 
-        # Codes: p, Z in udp_server.py
+        if data[0] in ['V', 'W', 'Y', 'E', 'N']:
+            await self._send(data, to_all=True, to_self=False)
+            return
+
+        # Codes: p, Z, X in udp_server.py
         match data[0]:  # At data[0] code
             case "H":  # Map load, client ready
                 await self._connected_handler()
@@ -700,8 +697,8 @@ class Client:
                 ev.call_lua_event(event_name, self.cid, even_data)
                 ev.call_event(event_name, data=even_data, player=self)
                 await ev.call_async_event(event_name, data=even_data, player=self)
-            case "N":
-                await self._send(data, to_all=True, to_self=False)
+            case _:
+                self.log.warning(f"TCP [{self.cid}] Unknown code: {data[0]}; {data}")
 
     async def _looper(self):
         ev.call_lua_event("onPlayerConnecting", self.cid)
@@ -728,7 +725,7 @@ class Client:
         await asyncio.sleep(0.3)
         self.__alive = False
         if (self.cid > 0 or self.nick is not None) and \
-                self.__Core.clients_by_nick.get(self.nick):
+                self._core.clients_by_nick.get(self.nick):
             for i, car in enumerate(self._cars):
                 if not car:
                     continue
@@ -746,9 +743,9 @@ class Client:
                     round((time.monotonic() - self._connect_time) / 60, 2)
                 )
             )
-            self.__Core.clients[self.cid] = None
-            del self.__Core.clients_by_id[self.cid]
-            del self.__Core.clients_by_nick[self.nick]
+            self._core.clients[self.cid] = None
+            del self._core.clients_by_id[self.cid]
+            del self._core.clients_by_nick[self.nick]
         else:
             self.log.debug(f"Removing client; Closing connection...")
         try:

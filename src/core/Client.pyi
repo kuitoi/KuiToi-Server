@@ -25,7 +25,7 @@ class Client:
         self._log = utils.get_logger("client(id: )")
         self._addr: Tuple[str, int] = writer.get_extra_info("sockname")
         self._loop = asyncio.get_event_loop()
-        self.__Core: Core = core
+        self._core: Core = core
         self._cid: int = -1
         self._key: str = None
         self.nick: str = None
@@ -37,7 +37,7 @@ class Client:
         self._focus_car = -1
         self._identifiers = []
         self._cars: List[Union[Dict[str, Union[str, bool, Dict[str, Union[str, List[int], float]]]], None]] = []
-        self._snowman: Dict[str, Union[int, str]]  = {"id": -1, "packet": ""}
+        self._unicycle: Dict[str, Union[int, str]]  = {"id": -1, "packet": ""}
         self._last_position = {}
         self._lock = Lock()
 

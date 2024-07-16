@@ -45,7 +45,6 @@ class i18n:
     core_player_kick_stale: str
     core_player_kick_no_allowed_default_reason: str
     core_player_kick_server_full: str
-    core_player_set_id: str
     core_identifying_okay: str
 
     # In-game phrases
@@ -110,5 +109,4 @@ class i18n:
     # Command: exit
     man_message_exit: str
     help_message_exit: str
-
 ```

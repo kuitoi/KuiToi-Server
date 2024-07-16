@@ -94,9 +94,8 @@ class TCPServer:
             await client.kick(i18n.core_player_kick_server_full)
             return False, client
         else:
-            self.log.info(i18n.core_identifying_okay)
             await self.Core.insert_client(client)
-            client.log.info(i18n.core_player_set_id.format(client.pid))
+            client.log.info(i18n.core_identifying_okay)
 
         return True, client
 
@@ -137,7 +136,8 @@ class TCPServer:
             try:
                 ip = writer.get_extra_info('peername')[0]
                 if self.rl.is_banned(ip):
-                    self.rl.notify(ip, writer)
+                    await self.rl.notify(ip, writer)
+                    writer.close()
                     break
                 data = await reader.read(1)
                 if not data:

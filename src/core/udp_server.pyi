@@ -18,7 +18,7 @@ class UDPServer(asyncio.DatagramTransport):
     def __init__(self, core: Core, host=None, port=None, transport=None):
         self.log = utils.get_logger("UDPServer")
         self.loop = asyncio.get_event_loop()
-        self.Core = core
+        self._core = core
         self.host = host
         self.port = port
         self.run = False

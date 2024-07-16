@@ -40,6 +40,7 @@ class RateLimiter:
                     if len(x) == 2:
                         ip = x[1]
                         if ip in _banned_ips:
+                            self._notified[ip] = False
                             self._calls[ip].clear()
                             self._banned_until[ip] = datetime.now()
                             return f"{ip} removed from banlist."
@@ -52,6 +53,7 @@ class RateLimiter:
                         sec = x[2]
                         if not sec.isdigit():
                             return f"{sec!r} is not digit."
+                        self._notified[ip] = False
                         self._calls[ip].clear()
                         self._banned_until[ip] = datetime.now() + timedelta(seconds=int(sec))
                         return f"{ip} banned until {self._banned_until[ip]}"
@@ -69,7 +71,6 @@ class RateLimiter:
             try:
                 writer.write(b'\x0b\x00\x00\x00Eip banned.')
                 await writer.drain()
-                writer.close()
             except Exception:
                 pass
 

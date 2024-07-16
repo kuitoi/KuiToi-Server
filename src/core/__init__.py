@@ -9,12 +9,12 @@
 __title__ = 'KuiToi-Server'
 __description__ = 'BeamingDrive Multiplayer server compatible with BeamMP clients.'
 __url__ = 'https://github.com/kuitoi/kuitoi-Server'
-__version__ = '0.4.5'
-__build__ = 2303  # Я это считаю лог файлами
+__version__ = '0.4.6'
+__build__ = 2421  # Я это считаю лог файлами
 __author__ = 'SantaSpeen'
 __author_email__ = 'admin@kuitoi.su'
 __license__ = "FPA"
-__copyright__ = 'Copyright 2023 © SantaSpeen (Maxim Khomutov)'
+__copyright__ = 'Copyright 2024 © SantaSpeen (Maxim Khomutov)'
 
 import asyncio
 import builtins
@@ -43,7 +43,7 @@ config_path = "kuitoi.yml"
 if args.config:
     config_path = args.config
 config_provider = ConfigProvider(config_path)
-config = config_provider.open_config()
+config = config_provider.read()
 builtins.config = config
 config.enc = config.Options['encoding']
 if config.Options['debug'] is True:
@@ -60,6 +60,7 @@ ml.builtins_hook()
 log.debug("Initializing EventsSystem...")
 ev = EventsSystem()
 ev.builtins_hook()
+ev.register("get_version", lambda _: {"version": __version__, "build": __build__})
 
 log.info(i18n.hello)
 log.info(i18n.config_path.format(config_path))
@@ -68,7 +69,7 @@ log.debug("Initializing BeamMP Server system...")
 # Key handler..
 if not config.Auth['private'] and not config.Auth['key']:
     log.warn(i18n.auth_need_key)
-    url = "https://beammp.com/k/keys"
+    url = "https://keymaster.beammp.com/login"
     if shortcuts.yes_no_dialog(
             title='BeamMP Server Key',
             text=i18n.GUI_need_key_message,
@@ -90,7 +91,7 @@ if not config.Auth['private'] and not config.Auth['key']:
         text=i18n.GUI_enter_key_message,
         ok_text=i18n.GUI_ok,
         cancel_text=i18n.GUI_cancel).run()
-    config_provider.save_config()
+    config_provider.save()
 if not config.Auth['private'] and not config.Auth['key']:
     log.error(i18n.auth_empty_key)
     log.info(i18n.stop)

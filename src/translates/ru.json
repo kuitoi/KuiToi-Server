@@ -41,7 +41,6 @@
   "core_player_kick_stale": "Устаревший клиент. (Заменено новым подключением)",
   "core_player_kick_no_allowed_default_reason": "Вам не рады на этом сервере. Вход запрещён.",
   "core_player_kick_server_full": "Сервер полон.",
-  "core_player_set_id": "Игрок получил ID {}",
   "core_identifying_okay": "Успешный вход.",
 
   "": "In-game phrases",

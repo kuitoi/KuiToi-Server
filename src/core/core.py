@@ -27,7 +27,8 @@ class Core:
 
     def __init__(self):
         self.log = utils.get_logger("core")
-        self.loop = asyncio.get_event_loop()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         self.start_time = time.monotonic()
         self.run = False
         self.direct = False
@@ -47,7 +48,7 @@ class Core:
         self.lock_upload = False
 
         self.client_major_version = "2.0"
-        self.BeamMP_version = "3.4.1"  # 20.07.2023
+        self.BeamMP_version = "3.4.1"  # 16.07.2024
 
         ev.register("_get_BeamMP_version", lambda x: tuple([int(i) for i in self.BeamMP_version.split(".")]))
         ev.register("_get_player", lambda x: self.get_client(**x['kwargs']))
@@ -103,6 +104,7 @@ class Core:
         return out
 
     async def check_alive(self):
+        self.log.debug("Starting alive checker.")
         maxp = config.Game['players']
         try:
             while self.run:
@@ -138,6 +140,8 @@ class Core:
         uvserver.run()
 
     async def stop_me(self):
+        if not config.WebAPI['enabled']:
+            return
         while webapp.data_run[0]:
             await asyncio.sleep(1)
         self.run = False
@@ -145,31 +149,44 @@ class Core:
 
     # noinspection SpellCheckingInspection,PyPep8Naming
     async def heartbeat(self, test=False):
-        if config.Auth["private"] or self.direct:
-            if test:
-                self.log.info(i18n.core_direct_mode)
-            self.direct = True
-            return
+        try:
+            self.log.debug("Starting heartbeat.")
+            if config.Auth["private"] or self.direct:
+                if test:
+                    self.log.info(i18n.core_direct_mode)
+                self.direct = True
+                return
 
-        BEAM_backend = ["backend.beammp.com", "backup1.beammp.com", "backup2.beammp.com"]
-        modlist = ""
-        for mod in self.mods_list:
-            if type(mod) == int:
-                continue
-            modlist += f"/{os.path.basename(mod['path'])};"
-        modstotalsize = self.mods_list[0]
-        modstotal = len(self.mods_list) - 1
-        while self.run:
-            try:
-                data = {"uuid": config.Auth["key"], "players": len(self.clients_by_id),
-                        "maxplayers": config.Game["players"], "port": config.Server["server_port"],
-                        "map": f"/levels/{config.Game['map']}/info.json", "private": config.Auth['private'],
-                        "version": self.BeamMP_version, "clientversion": self.client_major_version,
-                        "name": config.Server["name"], "modlist": modlist, "modstotalsize": modstotalsize,
-                        "modstotal": modstotal, "playerslist": "", "desc": config.Server['description'], "pass": False}
+            BEAM_backend = ["backend.beammp.com", "backup1.beammp.com", "backup2.beammp.com"]
+            _map = config.Game['map'] if "/" in config.Game['map'] else f"/levels/{config.Game['map']}/info.json"
+            tags = config.Server['tags'].replace(", ", ";").replace(",", ";")
+            if tags and tags[-1:] != ";":
+                tags += ";"
+            modlist = "".join(f"/{os.path.basename(mod['path'])};" for mod in self.mods_list[1:])
+            modstotalsize = self.mods_list[0]
+            modstotal = len(self.mods_list) - 1
+            while self.run:
+                playerslist = "".join(f"{client.nick};" for client in self.clients if client and client.alive)
+                data = {
+                    "uuid": config.Auth["key"],
+                    "players": len(self.clients_by_id),
+                    "maxplayers": config.Game["players"],
+                    "port": config.Server["server_port"],
+                    "map": _map,
+                    "private": config.Auth['private'],
+                    "version": self.BeamMP_version,
+                    "clientversion": self.client_major_version,
+                    "name": config.Server["name"],
+                    "tags": tags,
+                    "guests": not config.Auth["private"],
+                    "modlist": modlist,
+                    "modstotalsize": modstotalsize,
+                    "modstotal": modstotal,
+                    "playerslist": playerslist,
+                    "desc": config.Server['description'],
+                    "pass": False
+                }
 
-                # Sentry?
-                ok = False
                 body = {}
                 for server_url in BEAM_backend:
                     url = "https://" + server_url + "/heartbeat"
@@ -177,14 +194,15 @@ class Core:
                         async with aiohttp.ClientSession() as session:
                             async with session.post(url, data=data, headers={"api-v": "2"}) as response:
                                 code = response.status
+                                # text = await response.text()
+                                # self.log.debug(f"[HB] res={text}")
                                 body = await response.json()
-                                ok = True
                         break
                     except Exception as e:
                         self.log.debug(f"Auth: Error `{e}` while auth with `{server_url}`")
                         continue
 
-                if ok:
+                if body:
                     if not (body.get("status") is not None and
                             body.get("code") is not None and
                             body.get("msg") is not None):
@@ -216,11 +234,11 @@ class Core:
                     #     raise KeyboardInterrupt
 
                 if test:
-                    return ok
+                    return bool(body)
 
                 await asyncio.sleep(5)
-            except Exception as e:
-                self.log.error(f"Error in heartbeat: {e}")
+        except Exception as e:
+            self.log.error(f"Error in heartbeat: {e}")
 
     async def kick_cmd(self, args):
         if not len(args) > 0:

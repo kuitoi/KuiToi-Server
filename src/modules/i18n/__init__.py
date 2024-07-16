@@ -124,7 +124,7 @@ class MultiLanguage:
         self.lang_url = "https://raw.githubusercontent.com/KuiToi/KuiToi-Server/Stable/src/translates/"
 
     def set_language(self, language):
-        if language == self.language:
+        if self.__i18n and language == self.language:
             return
         self.log.debug(f"set_language({language})")
         self.language = language

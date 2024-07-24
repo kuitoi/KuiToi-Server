@@ -130,7 +130,7 @@ class Client:
         if not message:
             message = "no message"
             to_all = False
-        await self._send(f"C:{message!r}", to_all=to_all)
+        await self._send(f"C:{message}", to_all=to_all)
 
     async def send_event(self, event_name, event_data, to_all=True):
         if isinstance(event_data, (list, tuple, dict)):

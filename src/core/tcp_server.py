@@ -89,6 +89,10 @@ class TCPServer:
             return False, client
 
         ev.call_event("onPlayerAuthenticated", player=client)
+        await ev.call_async_event("onPlayerAuthenticated", player=client)
+        if not client.alive:
+            await client.kick("Not accepted.")
+            return False, client
 
         if len(self.Core.clients_by_id) > config.Game["players"]:
             await client.kick(i18n.core_player_kick_server_full)

@@ -160,11 +160,16 @@ class Core:
             BEAM_backend = ["backend.beammp.com", "backup1.beammp.com", "backup2.beammp.com"]
             _map = config.Game['map'] if "/" in config.Game['map'] else f"/levels/{config.Game['map']}/info.json"
             tags = config.Server['tags'].replace(", ", ";").replace(",", ";")
+            self.log.debug(f"[heartbeat] {_map=}")
+            self.log.debug(f"[heartbeat] {tags=}")
             if tags and tags[-1:] != ";":
                 tags += ";"
             modlist = "".join(f"/{os.path.basename(mod['path'])};" for mod in self.mods_list[1:])
             modstotalsize = self.mods_list[0]
             modstotal = len(self.mods_list) - 1
+            self.log.debug(f"[heartbeat] {modlist=}")
+            self.log.debug(f"[heartbeat] {modstotalsize=}")
+            self.log.debug(f"[heartbeat] {modstotal=}")
             while self.run:
                 playerslist = "".join(f"{client.nick};" for client in self.clients if client and client.alive)
                 data = {
@@ -174,7 +179,7 @@ class Core:
                     "port": config.Server["server_port"],
                     "map": _map,
                     "private": config.Auth['private'],
-                    "version": self.BeamMP_version,
+                    "version": f"KuiToi-{self.BeamMP_version}",
                     "clientversion": self.client_major_version,
                     "name": config.Server["name"],
                     "tags": tags,

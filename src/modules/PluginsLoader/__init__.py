@@ -7,8 +7,11 @@
 # Licence: FPA
 # (c) kuitoi.su 2023
 import asyncio
+import importlib
 import inspect
 import os
+import subprocess
+import sys
 import types
 from contextlib import contextmanager
 from pathlib import Path
@@ -97,6 +100,18 @@ class KuiToi:
     def add_command(self, key, func, man, desc, custom_completer) -> dict:
         self.log.debug("Requests add_command")
         return console.add_command(key, func, man, desc, custom_completer)
+
+    def install_and_import(self, package):
+        self.log.debug(f"Import package: {package}")
+        try:
+            # Попробуйте импортировать пакет
+            importlib.import_module(package)
+        except ImportError:
+            # Если пакет не установлен, установите его
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        finally:
+            # Попробуйте еще раз импортировать пакет
+            return importlib.import_module(package)
 
 
 class PluginsLoader:

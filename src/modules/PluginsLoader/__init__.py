@@ -10,12 +10,13 @@ import asyncio
 import importlib
 import inspect
 import os
-import subprocess
 import sys
 import types
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Thread
+
+from pip._internal.utils.entrypoints import main as pip_main
 
 from core import get_logger
 
@@ -101,20 +102,9 @@ class KuiToi:
         self.log.debug("Requests add_command")
         return console.add_command(key, func, man, desc, custom_completer)
 
-    def install_and_import(self, package):
-        self.log.debug(f"Import package: {package}")
-        try:
-            # Попробуйте импортировать пакет
-            importlib.import_module(package)
-        except ImportError:
-            # Если пакет не установлен, установите его
-            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-        finally:
-            # Попробуйте еще раз импортировать пакет
-            return importlib.import_module(package)
-
 
 class PluginsLoader:
+    _pip_dir = str(Path("pip-packets").resolve())
 
     def __init__(self, plugins_dir):
         self.loop = asyncio.get_event_loop()
@@ -128,6 +118,14 @@ class PluginsLoader:
         ev.register("_plugins_get", lambda x: list(self.plugins.keys()))
         console.add_command("plugins", lambda x: self.loaded_str[:-2])
         console.add_command("pl", lambda x: self.loaded_str[:-2])
+        console.add_command("install", self._pip_install)
+        sys.path.append(self._pip_dir)
+
+    def _pip_install(self, x):
+        if len(x) > 0:
+            pip_main(['install', x[0], '--target', self._pip_dir])
+        else:
+            return "Invalid syntax"
 
     async def load(self):
         self.log.debug("Loading plugins...")

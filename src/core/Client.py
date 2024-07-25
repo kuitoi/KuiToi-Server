@@ -521,10 +521,11 @@ class Client:
             self.log.debug(f"Invalid car: car_id={car_id}")
 
     async def reset_car(self, car_id, x, y, z, rot=None):
-        # TODO: reset_car
         self.log.debug(f"Resetting car from plugin")
-        if rot is None:
-            rot = {"y": 0, "w": 0, "x": 0, "z": 0}
+        jpkt = {"rot": {"y": 0, "w": 0, "x": 0, "z": 0}, "pos": {"y": int(y), "x": int(x), "z": int(z)}}
+        if rot:
+            jpkt['rot'] = rot
+        await self._send(f"Or:{self.cid}-{car_id}:{json.dumps(jpkt)}", True)
 
     async def _reset_car(self, raw_data):
         cid, car_id = self._get_cid_vid(raw_data)
@@ -545,6 +546,7 @@ class Client:
     async def _handle_car_codes(self, raw_data):
         if len(raw_data) < 6:
             return
+        self.log.debug(f"[car] {raw_data}")
         sub_code = raw_data[1]
         data = raw_data[3:]
         match sub_code:
@@ -602,6 +604,8 @@ class Client:
 
         self.log.info(i18n.client_sync_time.format(round(time.monotonic() - self._connect_time, 2)))
         self._ready = True
+        ev.call_event("onPlayerReady", player=self)
+        await ev.call_async_event("onPlayerReady", player=self)
 
     async def _chat_handler(self, data):
         sup = data.find(":", 2)

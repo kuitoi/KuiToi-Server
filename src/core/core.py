@@ -179,7 +179,7 @@ class Core:
                     "port": config.Server["server_port"],
                     "map": _map,
                     "private": config.Auth['private'],
-                    "version": f"KuiToi-{self.BeamMP_version}",
+                    "version": self.BeamMP_version,
                     "clientversion": self.client_major_version,
                     "name": config.Server["name"],
                     "tags": tags,

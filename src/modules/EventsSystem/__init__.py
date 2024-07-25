@@ -26,6 +26,7 @@ class EventsSystem:
             "onPlayerSentKey": [],  # Only sync, no handler
             "onPlayerAuthenticated": [],  # (!) Only sync, With handler
             "onPlayerJoin": [],  # (!) With handler
+            "onPlayerReady": [],  # No handler
             "onChatReceive": [],  # (!) With handler
             "onCarSpawn": [],  # (!) With handler
             "onCarDelete": [],  # (!) With handler (admin allow)
@@ -41,6 +42,7 @@ class EventsSystem:
         self.__async_events = {
             "onServerStarted": [],
             "onPlayerJoin": [],
+            "onPlayerReady": [],
             "onChatReceive": [],
             "onCarSpawn": [],
             "onCarDelete": [],

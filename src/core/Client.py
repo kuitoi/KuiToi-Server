@@ -504,10 +504,10 @@ class Client:
                     pass
 
                 if cid == self.cid or allow or admin_allow:
-                    if car['snowman']:
+                    if car['unicycle']:
                         unicycle_id = self._unicycle['id']
                         self._unicycle['id'] = -1
-                        self.log.debug(f"Delete snowman")
+                        self.log.debug(f"Delete unicycle")
                         await self._send(f"Od:{self.cid}-{unicycle_id}", to_all=True, to_self=True)
                         self._cars[unicycle_id] = None
                     else:
@@ -521,8 +521,8 @@ class Client:
             self.log.debug(f"Invalid car: car_id={car_id}")
 
     async def reset_car(self, car_id, x, y, z, rot=None):
-        self.log.debug(f"Resetting car from plugin")
-        jpkt = {"rot": {"y": 0, "w": 0, "x": 0, "z": 0}, "pos": {"y": int(y), "x": int(x), "z": int(z)}}
+        self.log.debug(f"Resetting car from plugin {x, y, z}; {rot=}")
+        jpkt = {"pos": {"y": float(y), "x": float(x), "z": float(z)}, "rot": {"y": 0, "w": 0, "x": 0, "z": 0}}
         if rot:
             jpkt['rot'] = rot
         await self._send(f"Or:{self.cid}-{car_id}:{json.dumps(jpkt)}", True)

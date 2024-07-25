@@ -36,7 +36,7 @@ class UDPServer(asyncio.DatagramTransport):
             client = self._core.get_client(cid=cid)
             if client:
                 if not client.alive:
-                    self.log.debug(f"{client.nick}:{cid} still sending UDP data: {data}")
+                    client.log.debug(f"Still sending UDP data: {data}")
                 match code:
                     case "p":  # Ping packet
                         ev.call_event("onSentPing")
@@ -45,7 +45,6 @@ class UDPServer(asyncio.DatagramTransport):
                         if client._udp_sock != (self.transport, addr):
                             client._udp_sock = (self.transport, addr)
                             self.log.debug(f"Set UDP Sock for CID: {cid}")
-                        ev.call_event("onChangePosition", data=data)
                         sub = data.find("{", 1)
                         last_pos = data[sub:]
                         try:
@@ -54,6 +53,7 @@ class UDPServer(asyncio.DatagramTransport):
                                 last_pos = json.loads(last_pos)
                                 client._last_position = last_pos
                                 client._cars[car_id]['pos'] = last_pos
+                                ev.call_event("onChangePosition", data, player=client, pos=last_pos)
                         except Exception as e:
                             self.log.warning(f"Cannot parse position packet: {e}")
                             self.log.debug(f"data: '{data}', sup: {sub}")

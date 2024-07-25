@@ -35,12 +35,11 @@ class TCPServer:
             await client.kick(i18n.core_player_kick_outdated)
             return False, client
         else:
-            # await client._send(b"S")  # Accepted client version
             await client._send(b"A")  # Accepted client version
 
         data = await client._recv(True)
         self.log.debug(f"Key: {data}")
-        if len(data) > 50:
+        if not data or len(data) > 50:
             await client.kick(i18n.core_player_kick_bad_key)
             return False, client
         client._key = data.decode("utf-8")

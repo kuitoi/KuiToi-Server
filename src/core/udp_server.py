@@ -62,7 +62,7 @@ class UDPServer(asyncio.DatagramTransport):
                     case "X":
                         await client._send(data, to_all=True, to_self=False, to_udp=True)
                     case _:
-                        self.log.warning(f" UDP [{cid}] Unknown code: {code}; {data}")
+                        self.log.warning(f"UDP [{cid}] Unknown code: {code}; {data}")
             else:
                 self.log.debug(f"[{cid}] Client not found.")
 

@@ -11,6 +11,7 @@ import inspect
 import os
 import types
 from contextlib import contextmanager
+from pathlib import Path
 from threading import Thread
 
 from core import get_logger
@@ -24,8 +25,8 @@ class KuiToi:
             raise AttributeError("KuiToi: Name is required")
         self.__log = get_logger(f"Plugin | {name}")
         self.__name = name
-        self.__dir = os.path.join(self._plugins_dir, self.__name)
-        if not os.path.exists(self.__dir):
+        self.__dir = Path(self._plugins_dir) / self.__name
+        if not self.__dir.exists():
             os.mkdir(self.__dir)
 
     @property
@@ -42,7 +43,9 @@ class KuiToi:
 
     @contextmanager
     def open(self, file, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None):
-        path = os.path.join(self.__dir, file)
+        path = self.__dir / file
+        if str(self.__dir) in str(file):
+            path = file
         self.log.debug(f'Trying to open "{path}" with mode "{mode}"')
         # Really need?
         # if not os.path.exists(path):

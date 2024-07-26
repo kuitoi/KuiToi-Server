@@ -7,16 +7,14 @@
 # Licence: FPA
 # (c) kuitoi.su 2023
 import asyncio
-import importlib
 import inspect
 import os
+import subprocess
 import sys
 import types
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Thread
-
-from pip._internal.utils.entrypoints import main as pip_main
 
 from core import get_logger
 
@@ -118,12 +116,19 @@ class PluginsLoader:
         ev.register("_plugins_get", lambda x: list(self.plugins.keys()))
         console.add_command("plugins", lambda x: self.loaded_str[:-2])
         console.add_command("pl", lambda x: self.loaded_str[:-2])
-        console.add_command("install", self._pip_install)
         sys.path.append(self._pip_dir)
+        os.makedirs(self._pip_dir, exist_ok=True)
+        console.add_command("install", self._pip_install)
 
     def _pip_install(self, x):
+        self.log.debug(f"_pip_install {x}")
         if len(x) > 0:
-            pip_main(['install', x[0], '--target', self._pip_dir])
+            try:
+                subprocess.check_call(['pip', 'install', *x, '--target', self._pip_dir])
+                return "Success"
+            except subprocess.CalledProcessError as e:
+                self.log.debug(f"error: {e}")
+                return f"Failed to install packages"
         else:
             return "Invalid syntax"
 

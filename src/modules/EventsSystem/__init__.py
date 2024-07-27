@@ -38,6 +38,16 @@ class EventsSystem:
             "onChangePosition": [],  # Only sync, no handler
             "onPlayerDisconnect": [],  # No handler
             "onServerStopped": [],  # No handler
+            "serverTick": [],
+            "serverTick_0.5s": [],
+            "serverTick_1s": [],
+            "serverTick_2s": [],
+            "serverTick_3s": [],
+            "serverTick_4s": [],
+            "serverTick_5s": [],
+            "serverTick_10s": [],
+            "serverTick_30s": [],
+            "serverTick_60s": [],
         }
         self.__async_events = {
             "onServerStarted": [],
@@ -51,7 +61,17 @@ class EventsSystem:
             "onCarChanged": [],
             "onCarFocusMove": [],
             "onPlayerDisconnect": [],
-            "onServerStopped": []
+            "onServerStopped": [],
+            "serverTick": [],
+            "serverTick_0.5s": [],
+            "serverTick_1s": [],
+            "serverTick_2s": [],
+            "serverTick_3s": [],
+            "serverTick_4s": [],
+            "serverTick_5s": [],
+            "serverTick_10s": [],
+            "serverTick_30s": [],
+            "serverTick_60s": [],
         }
 
         self.__lua_events = {
@@ -109,7 +129,8 @@ class EventsSystem:
             self.log.debug("Register ok")
 
     async def call_async_event(self, event_name, *args, **kwargs):
-        self.log.debug(f"Calling async event: '{event_name}'")
+        if not event_name.startswith("serverTick"):
+            self.log.debug(f"Calling async event: '{event_name}'")
         funcs_data = []
         if event_name in self.__async_events.keys():
             for func in self.__async_events[event_name]:
@@ -125,8 +146,10 @@ class EventsSystem:
 
         return funcs_data
 
-    def call_event(self, event_name, *args, **kwargs):
-        if event_name not in ["onChangePosition", "onSentPing"]:  # UDP events
+    def call_event(self, event_name: str, *args, **kwargs):
+        if event_name not in (
+                "onChangePosition", "onSentPing",  # UDP events
+        ) and not event_name.startswith("serverTick"):
             self.log.debug(f"Calling sync event: '{event_name}'")
         funcs_data = []
 

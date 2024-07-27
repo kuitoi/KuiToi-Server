@@ -184,14 +184,13 @@ class TCPServer:
             self.run = False
             self.Core.run = False
 
-    async def stop(self):
+    def stop(self):
         self.log.debug("Stopping TCP server")
         try:
             self.server.close()
             for conn in self._connections:
                 conn.close()
-                await conn.wait_closed()
-            await self.server.wait_closed()
+            #     await conn.wait_closed()
+            # await self.server.wait_closed()
         except Exception as e:
             self.log.exception(e)
-        self.log.debug("Stopped")

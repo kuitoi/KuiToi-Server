@@ -1,14 +1,13 @@
 # Developed by KuiToi Dev
-# File core.udp_server.py
+# File core.udp_server
 # Written by: SantaSpeen
-# Core version: 0.4.5
+# Core version: 0.4.7
 # Licence: FPA
 # (c) kuitoi.su 2024
 import asyncio
 import json
 
 from core import utils
-
 
 # noinspection PyProtectedMember
 class UDPServer(asyncio.DatagramTransport):
@@ -56,7 +55,7 @@ class UDPServer(asyncio.DatagramTransport):
                                 ev.call_event("onChangePosition", data, player=client, pos=last_pos)
                         except Exception as e:
                             self.log.warning(f"Cannot parse position packet: {e}")
-                            self.log.debug(f"data: '{data}', sup: {sub}")
+                            self.log.debug(f"data: '{data}', sub: {sub}")
                             self.log.debug(f"last_pos ({type(last_pos)}): {last_pos}")
                         await client._send(data, to_all=True, to_self=False, to_udp=True)
                     case "X":
@@ -87,7 +86,6 @@ class UDPServer(asyncio.DatagramTransport):
         self.log.debug("Starting UDP server.")
         while self._core.run:
             try:
-
                 await asyncio.sleep(0.2)
 
                 d = UDPServer
@@ -104,8 +102,8 @@ class UDPServer(asyncio.DatagramTransport):
                     await asyncio.sleep(0.2)
 
             except OSError as e:
-                # self.run = False
-                # self.Core.run = False
+                self.run = False
+                self._core.run = False
                 self.log.error(f"Cannot bind port or other error: {e}")
             except Exception as e:
                 self.log.error(f"Error: {e}")

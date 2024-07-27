@@ -21,9 +21,6 @@
   "GUI_enter_key_message": "请输入密钥：",
   "GUI_cannot_open_browser": "无法打开浏览器。\n请使用此链接：{}",
 
-  "": "Web阶段",
-  "web_start": "WebAPI已启动于{}（按CTRL+C停止）",
-
   "": "核心短语",
   "core_bind_failed": "无法绑定端口。错误：{}",
   "core_direct_mode": "服务器以直接连接模式启动。",

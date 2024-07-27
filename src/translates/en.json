@@ -21,9 +21,6 @@
   "GUI_enter_key_message": "Please enter the key:",
   "GUI_cannot_open_browser": "Failed to open browser.\nUse this link: {}",
 
-  "": "Web phases",
-  "web_start": "WebAPI started on {} (CTRL+C to stop)",
-
   "": "Core phrases",
   "core_bind_failed": "Failed to bind port. Error: {}",
   "core_direct_mode": "Server started in direct connection mode.",

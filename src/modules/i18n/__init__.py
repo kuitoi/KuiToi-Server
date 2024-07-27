@@ -50,7 +50,6 @@ class MultiLanguage:
             "GUI_need_key_message": "BeamMP key is required to run!\nDo you want to open the link in your browser to get the key?",
             "GUI_enter_key_message": "Please enter the key:",
             "GUI_cannot_open_browser": "Failed to open browser.\nUse this link: {}",
-            "web_start": "WebAPI started on {} (CTRL+C to stop)",
             "core_bind_failed": "Failed to bind port. Error: {}",
             "core_direct_mode": "Server started in direct connection mode.",
             "core_auth_server_error": "Received invalid response from BeamMP authentication server.",

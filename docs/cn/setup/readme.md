@@ -49,11 +49,6 @@ Server:
   name: KuiToi-Server
   server_ip: 0.0.0.0
   server_port: 30814
-WebAPI:
-  enabled: false
-  secret_key: 3838ccb03c86cdb386b67fbfdcba62d0
-  server_ip: 127.0.0.1
-  server_port: 8433
 ```
 ### Auth
 
@@ -83,6 +78,3 @@ WebAPI:
 * `name` - BeamMP 启动器的服务器名称
 * `server_ip` - 分配给服务器的 IP 地址（仅适用于有经验的用户，默认为 0.0.0.0）
 * `server_port` - 服务器将在哪个端口上工作
-
-### WebAPI
-##### _文档尚未准备好_

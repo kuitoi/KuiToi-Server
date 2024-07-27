@@ -21,9 +21,6 @@
   "GUI_enter_key_message": "Пожалуйста введите ключ:",
   "GUI_cannot_open_browser": "Не получилось открыть браузер.\nИспользуй эту ссылку: {}",
 
-  "": "Web phases",
-  "web_start": "WebAPI запустился на {} (CTRL+C для выключения)",
-
   "": "Core phrases",
   "core_bind_failed": "Не получилось занять порт. Ошибка: {}",
   "core_direct_mode": "Сервер запушен в режиме прямого подключения.",

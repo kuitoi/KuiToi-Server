@@ -6,5 +6,4 @@
 2. 插件和事件系统 - [这里](./plugins)
 3. Lua的细微差别 - [这里](./plugins/lua)
 4. 多语言支持 - [这里](./multilanguage)
-5. KuiToi WebAPI - [这里](./web)
-6. 将会有新的内容...
+5. 将会有新的内容...

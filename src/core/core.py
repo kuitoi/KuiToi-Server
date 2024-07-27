@@ -9,17 +9,14 @@ import math
 import os
 import random
 import time
-from threading import Thread
 
 import aiohttp
-import uvicorn
 
 from core import utils, __version__
 from core.Client import Client
 from core.tcp_server import TCPServer
 from core.udp_server import UDPServer
 from modules import PluginsLoader
-from modules.WebAPISystem import app as webapp
 
 
 # noinspection PyProtectedMember
@@ -41,9 +38,6 @@ class Core:
         self.server_port = config.Server["server_port"]
         self.tcp = TCPServer
         self.udp = UDPServer
-        self.web_thread = None
-        self.web_pool = webapp.data_pool
-        self.web_stop = None
 
         self.lock_upload = False
 
@@ -128,24 +122,6 @@ class Core:
             if not client:
                 continue
             await client.kick("Server shutdown!")
-
-    @staticmethod
-    def start_web():
-        uvconfig = uvicorn.Config("modules.WebAPISystem.app:web_app",
-                                  host=config.WebAPI["server_ip"],
-                                  port=config.WebAPI["server_port"],
-                                  loop="asyncio")
-        uvserver = uvicorn.Server(uvconfig)
-        webapp.uvserver = uvserver
-        uvserver.run()
-
-    async def stop_me(self):
-        if not config.WebAPI['enabled']:
-            return
-        while webapp.data_run[0]:
-            await asyncio.sleep(1)
-        self.run = False
-        raise KeyboardInterrupt
 
     # noinspection SpellCheckingInspection,PyPep8Naming
     async def heartbeat(self, test=False):
@@ -282,17 +258,6 @@ class Core:
             lpl.load()
 
         try:
-            # WebApi Start
-            if config.WebAPI["enabled"]:
-                self.log.debug("Initializing WebAPI...")
-                web_thread = Thread(target=self.start_web, name="WebApiThread")
-                web_thread.start()
-                self.log.debug(f"WebAPI started at new thread: {web_thread.name}")
-                self.web_thread = web_thread
-                # noinspection PyProtectedMember
-                self.web_stop = webapp._stop
-                await asyncio.sleep(.3)
-
             # Mods handler
             self.log.debug("Listing mods..")
             if not os.path.exists(self.mods_dir):
@@ -313,8 +278,8 @@ class Core:
             for i in range(int(config.Game["players"] * 2.3)):  # * 2.3 For down sock and buffer.
                 self.clients.append(None)
             tasks = []
-            # self.udp.start,
-            f_tasks = [self.tcp.start, self.udp._start, console.start, self.stop_me, self.heartbeat, self.check_alive]
+            # self.udp.start
+            f_tasks = [self.tcp.start, self.udp._start, console.start, self.heartbeat, self.check_alive]
             if config.RCON['enabled']:
                 console.rcon.version = f"KuiToi {__version__}"
                 rcon = console.rcon(config.RCON['password'], config.RCON['server_ip'], config.RCON['server_port'])
@@ -353,8 +318,6 @@ class Core:
             ev.call_event("_lua_plugins_unload")
         await ev.call_async_event("_plugins_unload")
         self.run = False
-        if config.WebAPI["enabled"]:
-            asyncio.run(self.web_stop())
         total_time = time.monotonic() - self.start_time
         hours = int(total_time // 3600)
         minutes = int((total_time % 3600) // 60)

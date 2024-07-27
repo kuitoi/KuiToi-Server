@@ -13,7 +13,7 @@ import yaml
 
 
 class Config:
-    def __init__(self, auth=None, game=None, server=None, rcon=None, options=None, web=None):
+    def __init__(self, auth=None, game=None, server=None, rcon=None, options=None):
         self.Auth = auth or {"key": None, "private": True}
         self.Game = game or {"map": "gridmap_v2", "players": 8, "cars": 1}
         self.Server = server or {"name": "KuiToi-Server", "description": "Welcome to KuiToi Server!", "tags": "Freroam",
@@ -22,12 +22,10 @@ class Config:
                                    "use_lua": False, "log_chat": True}
         self.RCON = rcon or {"enabled": False, "server_ip": "127.0.0.1", "server_port": 10383,
                              "password": secrets.token_hex(6)}
-        self.WebAPI = web or {"enabled": False, "server_ip": "127.0.0.1", "server_port": 8433,
-                              "access_token": secrets.token_hex(16)}
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(Auth={self.Auth!r}, Game={self.Game!r}, Server={self.Server!r}, " \
-               f"RCON={self.RCON!r}, Options={self.Options!r}, WebAPI={self.WebAPI!r})"
+        return (f"{self.__class__.__name__}(Auth={self.Auth!r}, Game={self.Game!r}, Server={self.Server!r}, "
+                f"RCON={self.RCON!r}, Options={self.Options!r})")
 
 
 class ConfigProvider:
@@ -51,7 +49,7 @@ class ConfigProvider:
             if _again:
                 print("Error: empty configuration.")
                 exit(1)
-            print("Empty config?..")
+            print("Reconfig: empty configuration.")
             os.remove(self.config_path)
             self.config = Config()
             return self.read(True)
@@ -68,5 +66,6 @@ class ConfigProvider:
         del _config.enc
         del _config.Options['debug']
         del _config.Options['encoding']
+        os.remove(self.config_path)
         with open(self.config_path, "w", encoding="utf-8") as f:
             yaml.dump(_config, f)

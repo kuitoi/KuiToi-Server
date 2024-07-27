@@ -5,6 +5,7 @@ import platform
 import random
 import re
 import shutil
+import sys
 import threading
 import time
 
@@ -640,7 +641,11 @@ class LuaPluginsLoader:
             p0 = os.path.join(pa, name, "?.lua")
             p1 = os.path.join(pa, name, "lua", "?.lua")
             lua_globals.package.path += f';{p0};{p1}'
-            with open("modules/PluginsLoader/add_in.lua", "r") as f:
+            try:
+                _file = os.path.join(sys._MEIPASS, "add_in.lua")
+            except AttributeError:
+                _file = "modules/PluginsLoader/add_in.lua"
+            with open(_file, "r") as f:
                 lua.execute(f.read())
             self.lua_plugins.update({name: {"lua": lua, "ok": False}})
             plugin_path = os.path.join(self.plugins_dir, name)

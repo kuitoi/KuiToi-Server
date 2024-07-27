@@ -608,14 +608,6 @@ class LuaPluginsLoader:
                 "ImScaredOfUpdates": False,
                 "SendErrorsShowMessage": False,
                 "SendErrors": False
-            },
-            "HTTP": {
-                "HTTPServerIP": config.WebAPI['server_ip'],
-                "HTTPServerPort": config.WebAPI['server_port'],
-                "SSLKeyPath": None,
-                "SSLCertPath": None,
-                "UseSSL": False,
-                "HTTPServerEnabled": config.WebAPI['enabled'],
             }
         }
         with open("ServerConfig.toml", "w") as f:
@@ -671,10 +663,15 @@ class LuaPluginsLoader:
                 self.log.error(f"Exception onInit from `{name}`: {e}")
                 self.log.exception(e)
 
-    def unload(self, _):
+    async def unload(self, _):
         self.log.debug("Unloading lua plugins")
         for name, data in self.lua_plugins.items():
             if data['ok']:
                 self.log.info(i18n.plugins_lua_unload.format(name))
-                for _, timer in data['lua'].globals().MP._event_timers.items():
+                MP = data['lua'].globals().MP
+                self.log.debug("gather")
+                await asyncio.gather(*MP.tasks)
+                self.log.debug("timers")
+                for _, timer in MP._event_timers.items():
                     timer.stop()
+                self.log.debug("unloaded")

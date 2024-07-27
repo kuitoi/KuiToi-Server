@@ -23,13 +23,12 @@ class KuiToi:
     _plugins_dir = ""
 
     def __init__(self, name):
-        if name is None:
+        if not name:
             raise AttributeError("KuiToi: Name is required")
         self.__log = get_logger(f"Plugin | {name}")
         self.__name = name
         self.__dir = Path(self._plugins_dir) / self.__name
-        if not self.__dir.exists():
-            os.mkdir(self.__dir)
+        os.makedirs(self.__dir, exist_ok=True)
 
     @property
     def log(self):

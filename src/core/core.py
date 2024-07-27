@@ -315,7 +315,7 @@ class Core:
         await ev.call_async_event("onServerStopped")
         await self.__gracefully_kick()
         if config.Options['use_lua']:
-            ev.call_event("_lua_plugins_unload")
+            await ev.call_async_event("_lua_plugins_unload")
         await ev.call_async_event("_plugins_unload")
         self.run = False
         total_time = time.monotonic() - self.start_time

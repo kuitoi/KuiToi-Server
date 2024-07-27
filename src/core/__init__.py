@@ -10,7 +10,7 @@ __title__ = 'KuiToi-Server'
 __description__ = 'BeamingDrive Multiplayer server compatible with BeamMP clients.'
 __url__ = 'https://github.com/kuitoi/kuitoi-Server'
 __version__ = '0.4.8 (pre)'
-__build__ = 2474  # Я это считаю лог файлами
+__build__ = 2483  # Я это считаю лог файлами
 __author__ = 'SantaSpeen'
 __author_email__ = 'admin@kuitoi.su'
 __license__ = "FPA"
@@ -91,7 +91,7 @@ if not config.Auth['private'] and not config.Auth['key']:
         text=i18n.GUI_enter_key_message,
         ok_text=i18n.GUI_ok,
         cancel_text=i18n.GUI_cancel).run()
-config_provider.save()
+    config_provider.save()
 if not config.Auth['private'] and not config.Auth['key']:
     log.error(i18n.auth_empty_key)
     log.info(i18n.stop)

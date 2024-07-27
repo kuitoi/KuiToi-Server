@@ -133,10 +133,9 @@ class Client:
         await self._send(f"C:{message}", to_all=to_all)
 
     async def send_event(self, event_name, event_data, to_all=True):
+        self.log.debug(f"send_event: {event_name}:{event_data}; {to_all=}")
         if isinstance(event_data, (list, tuple, dict)):
             event_data = json.dumps(event_data, separators=(',', ':'))
-        else:
-            event_data = f"{event_data!r}"
         if len(event_data) > 104857599:
             self.log.error("Client data too big! >=104857599")
             return

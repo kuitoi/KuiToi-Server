@@ -44,7 +44,6 @@
   - [x] MultiLanguage: (i18n support)
     - [x] Core
     - [x] Console
-    - [x] WebAPI
   - [x] Plugins supports:
     - [x] Python part:
       - [x] Load Python plugins

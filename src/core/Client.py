@@ -754,11 +754,13 @@ class Client:
         try:
             if not self.__writer.is_closing():
                 self.__writer.close()
+                await self.__writer.wait_closed()
         except Exception as e:
             self.log.debug(f"Error while closing writer: {e}")
         try:
             _, down_w = self._down_sock
             if down_w and not down_w.is_closing():
                 down_w.close()
+                await down_w.wait_closed()
         except Exception as e:
             self.log.debug(f"Error while closing download writer: {e}")

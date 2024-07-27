@@ -22,6 +22,8 @@ class TCPServer:
         self.host = host
         self.port = port
         self.run = False
+        self._connections = set()
+        self.server = None
         self.rl = RateLimiter(50, 10, 300)
         console.add_command("rl", self.rl.parse_console, None, "RateLimiter menu",
                             {"rl": {"info": None, "unban": None, "ban": None, "help": None}})
@@ -135,7 +137,8 @@ class TCPServer:
         return False, None
 
     async def handle_client(self, reader, writer):
-        while True:
+        while self.run:
+            self._connections.add(writer)
             try:
                 ip = writer.get_extra_info('peername')[0]
                 if self.rl.is_banned(ip):
@@ -163,12 +166,12 @@ class TCPServer:
         self.log.debug("Starting TCP server.")
         self.run = True
         try:
-            server = await asyncio.start_server(self.handle_client, self.host, self.port,
+            self.server = await asyncio.start_server(self.handle_client, self.host, self.port,
                                                 backlog=int(config.Game["players"] * 2.3))
-            self.log.debug(f"TCP server started on {server.sockets[0].getsockname()!r}")
+            self.log.debug(f"TCP server started on {self.server.sockets[0].getsockname()!r}")
             while True:
-                async with server:
-                    await server.serve_forever()
+                async with self.server:
+                    await self.server.serve_forever()
         except OSError as e:
             self.log.error(i18n.core_bind_failed.format(e))
             raise e
@@ -181,5 +184,14 @@ class TCPServer:
             self.run = False
             self.Core.run = False
 
-    def stop(self):
+    async def stop(self):
         self.log.debug("Stopping TCP server")
+        try:
+            self.server.close()
+            for conn in self._connections:
+                conn.close()
+                await conn.wait_closed()
+            await self.server.wait_closed()
+        except Exception as e:
+            self.log.exception(e)
+        self.log.debug("Stopped")

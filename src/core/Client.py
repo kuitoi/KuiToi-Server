@@ -134,6 +134,9 @@ class Client:
 
     async def send_event(self, event_name, event_data, to_all=True):
         self.log.debug(f"send_event: {event_name}:{event_data}; {to_all=}")
+        if not self.ready:
+            self.log.debug(f"Client not ready.")
+            return
         if isinstance(event_data, (list, tuple, dict)):
             event_data = json.dumps(event_data, separators=(',', ':'))
         if len(event_data) > 104857599:

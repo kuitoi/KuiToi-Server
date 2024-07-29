@@ -38,7 +38,7 @@ class UDPServer(asyncio.DatagramTransport):
                     client.log.debug(f"Still sending UDP data: {data}")
                 match code:
                     case "p":  # Ping packet
-                        ev.call_event("onSentPing")
+                        ev.call_event("onSentPing", player=client)
                         self.transport.sendto(b"p", addr)
                     case "Z":  # Position packet
                         if client._udp_sock != (self.transport, addr):

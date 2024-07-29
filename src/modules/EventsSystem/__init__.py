@@ -96,6 +96,21 @@ class EventsSystem:
         self.log.debug("used builtins_hook")
         builtins.ev = self
 
+    def unregister(self, func):
+        self.log.debug(f"unregister {func}")
+        s = a = 0
+        for k, funcs in self.__events.items():
+            for f in funcs:
+                if f is func:
+                    s += 1
+                    self.__events[k].remove(func)
+        for k, funcs in self.__async_events.items():
+            for f in funcs:
+                if f is func:
+                    a += 1
+                    self.__async_events[k].remove(func)
+        self.log.debug(f"unregister in {s+a} events; S:{s}; A:{a};")
+
     def is_event(self, event_name):
         return (event_name in self.__async_events.keys() or
                 event_name in self.__events.keys() or
@@ -117,15 +132,13 @@ class EventsSystem:
             return
         if async_event or inspect.iscoroutinefunction(event_func):
             if event_name not in self.__async_events:
-                self.__async_events.update({str(event_name): [event_func]})
-            else:
-                self.__async_events[event_name].append(event_func)
+                self.__async_events[event_name] = []
+            self.__async_events[event_name].append(event_func)
             self.log.debug("Register ok")
         else:
             if event_name not in self.__events:
-                self.__events.update({str(event_name): [event_func]})
-            else:
-                self.__events[event_name].append(event_func)
+                self.__events[event_name] = []
+            self.__events[event_name].append(event_func)
             self.log.debug("Register ok")
 
     async def call_async_event(self, event_name, *args, **kwargs):

@@ -1,7 +1,7 @@
 # Developed by KuiToi Dev
 # File core.tcp_server.pyi
 # Written by: SantaSpeen
-# Core version: 0.4.5
+# Core version: 0.4.8
 # Licence: FPA
 # (c) kuitoi.su 2023
 import asyncio

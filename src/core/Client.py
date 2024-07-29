@@ -1,7 +1,7 @@
 # Developed by KuiToi Dev
 # File core.tcp_server.py
 # Written by: SantaSpeen
-# Core version: 0.4.5
+# Core version: 0.4.8
 # Licence: FPA
 # (c) kuitoi.su 2023
 import asyncio
@@ -142,6 +142,10 @@ class Client:
         if not message:
             message = "no message"
             to_all = False
+        if "\n" in message:
+            ms = message.split("\n")
+            for m in ms:
+                await self.send_message(m, to_all)
         await self._send(f"C:{message}", to_all=to_all)
 
     async def send_event(self, event_name, event_data, to_all=False):

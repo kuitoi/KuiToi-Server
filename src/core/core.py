@@ -1,7 +1,7 @@
 # Developed by KuiToi Dev
 # File core.core.py
 # Written by: SantaSpeen
-# Version: 0.4.5
+# Version: 0.4.8
 # Licence: FPA
 # (c) kuitoi.su 2023
 import asyncio
@@ -300,8 +300,8 @@ class Core:
             ticks_30s = deque(maxlen=30 * int(target_tps) + 1)
             ticks_60s = deque(maxlen=60 * int(target_tps) + 1)
             console.add_command("tps", lambda _: f"{calc_ticks(ticks_2s, 2):.2f}TPS; For last 5s, 30s, 60s: "
-                                                 f"last: {calc_ticks(ticks_5s, 5):.2f},"
-                                                 f"{calc_ticks(ticks_30s, 30):.2f},"
+                                                 f"{calc_ticks(ticks_5s, 5):.2f}, "
+                                                 f"{calc_ticks(ticks_30s, 30):.2f}, "
                                                  f"{calc_ticks(ticks_60s, 60):.2f}.",
                                 None, "Print TPS", {"tps": None})
             _add_to_sleep = deque([0.0, 0.0, 0.0,], maxlen=3 * int(target_tps))

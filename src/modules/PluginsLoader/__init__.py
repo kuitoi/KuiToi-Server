@@ -178,7 +178,7 @@ class PluginsLoader:
         file_path = os.path.join(self.plugins_dir, file)
         if os.path.isfile(file_path) and file.endswith(".py"):
             try:
-                self.log.debug(f"Loading plugin: {file[:-3]}")
+                self.log.info(f"Loading plugin: {file[:-3]}")
                 plugin = types.ModuleType(file[:-3])
                 plugin.KuiToi = KuiToi
                 plugin.KuiToi._plugins_dir = self.plugins_dir

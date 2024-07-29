@@ -35,7 +35,7 @@ class Console:
                  not_found="Command \"%s\" not found in alias.",
                  debug=False) -> None:
         self.__logger = get_logger("console")
-        self.__is_run = False
+        self.__run = False
         self.no_cmd = False
         self.__prompt_in = prompt_in
         self.__prompt_out = prompt_out
@@ -57,7 +57,7 @@ class Console:
         self.rcon = rcon
 
     def __debug(self, *x):
-        self.__logger.debug(f"{x}")
+        self.__logger.debug(' '.join(x))
         # if self.__is_debug:
         #     x = list(x)
         #     x.insert(0, "\r CONSOLE DEBUG:")
@@ -197,10 +197,10 @@ class Console:
                          end: str or None = None,
                          file: str or None = None,
                          flush: bool = False) -> None:
-        self.__debug(f"Used __builtins_print; is_run: {self.__is_run}")
+        self.__debug(f"Used __builtins_print; is_run: {self.__run}")
         val = list(values)
         if len(val) > 0:
-            if self.__is_run:
+            if self.__run:
                 self.__print_logger.info(f"{' '.join([''.join(str(i)) for i in values])}\r\n{self.__prompt_in}")
             else:
                 if end is None:
@@ -283,9 +283,8 @@ class Console:
                 self.__logger.exception(e)
 
     async def start(self):
-        self.__is_run = True
+        self.__run = True
         await self.read_input()
 
     def stop(self, *args, **kwargs):
-        self.__is_run = False
-        raise KeyboardInterrupt
+        self.__run = False

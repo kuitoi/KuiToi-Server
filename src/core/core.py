@@ -26,6 +26,7 @@ def calc_ticks(ticks, duration):
         ticks.popleft()
     return len(ticks) / duration
 
+
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
 
@@ -50,7 +51,11 @@ class Core:
         self.tcp = TCPServer
         self.udp = UDPServer
 
+        self.tcp_pps = 0
+        self.udp_pps = 0
+
         self.tps = 10
+        self.target_tps = 60
 
         self.lock_upload = False
 
@@ -141,6 +146,12 @@ class Core:
             if not client:
                 continue
             await client.kick("Server shutdown!")
+
+    async def __gracefully_remove(self):
+        for client in self.clients:
+            if not client:
+                continue
+            await client._remove_me()
 
     # noinspection SpellCheckingInspection,PyPep8Naming
     async def heartbeat(self, test=False):
@@ -257,7 +268,6 @@ class Core:
             return "Client not found."
 
     async def _useful_ticks(self, _):
-        target_tps = 20
         tasks = []
         self.tick_counter += 1
         events = {
@@ -272,32 +282,34 @@ class Core:
             60: "serverTick_60s"
         }
         for interval in sorted(events.keys(), reverse=True):
-            if self.tick_counter % (interval * target_tps) == 0:
+            if self.tick_counter % (interval * self.target_tps) == 0:
                 ev.call_event(events[interval])
                 tasks.append(ev.call_async_event(events[interval]))
         await asyncio.gather(*tasks)
-        if self.tick_counter == (60 * target_tps):
+        if self.tick_counter == (60 * self.target_tps):
             self.tick_counter = 0
 
     async def _tick(self):
         try:
             ticks = 0
-            target_tps = 20
-            target_interval = 1 / target_tps
+            target_tps = self.target_tps
             last_tick_time = time.monotonic()
             ev.register("serverTick", self._useful_ticks)
             ticks_2s = deque(maxlen=2 * int(target_tps) + 1)
             ticks_5s = deque(maxlen=5 * int(target_tps) + 1)
             ticks_30s = deque(maxlen=30 * int(target_tps) + 1)
             ticks_60s = deque(maxlen=60 * int(target_tps) + 1)
-            console.add_command("tps", lambda
-                _: f"{calc_ticks(ticks_2s, 2):.2f}TPS; last: {calc_ticks(ticks_5s, 5):.2f}TPS/5s; {calc_ticks(ticks_30s, 30):.2f}TPS/30s; {calc_ticks(ticks_60s, 60):.2f}TPS/60s;",
+            console.add_command("tps", lambda _: f"{calc_ticks(ticks_2s, 2):.2f}TPS; For last 5s, 30s, 60s: "
+                                                 f"last: {calc_ticks(ticks_5s, 5):.2f},"
+                                                 f"{calc_ticks(ticks_30s, 30):.2f},"
+                                                 f"{calc_ticks(ticks_60s, 60):.2f}.",
                                 None, "Print TPS", {"tps": None})
-            _add_to_sleep = deque(maxlen=13 * int(target_tps))
-            _add_to_sleep.append(0.013)
+            _add_to_sleep = deque([0.0, 0.0, 0.0,], maxlen=3 * int(target_tps))
+            _t0 = []
 
             self.log.debug("tick system started")
             while self.run:
+                target_interval = 1 / self.target_tps
                 start_time = time.monotonic()
 
                 ev.call_event("serverTick")
@@ -306,6 +318,7 @@ class Core:
                 # Calculate the time taken for this tick
                 end_time = time.monotonic()
                 tick_duration = end_time - start_time
+                _t0.append(tick_duration)
 
                 # Calculate the time to sleep to maintain target TPS
                 sleep_time = target_interval - tick_duration - statistics.fmean(_add_to_sleep)
@@ -327,14 +340,14 @@ class Core:
                     # if self.tps < 5:
                     #     self.log.warning(f"Low TPS: {self.tps:.2f}")
                     # Reset for next calculation
+                    _t0s = max(_t0), min(_t0), statistics.fmean(_t0)
+                    _tw = max(_add_to_sleep), min(_add_to_sleep), statistics.fmean(_add_to_sleep)
+                    self.log.debug(f"[{'OK' if sleep_time > 0 else "CHECK"}] TPS: {self.tps:.2f}; Tt={_t0s}; Ts={sleep_time}; Tw={_tw}")
+                    _t0 = []
                     last_tick_time = current_time
                     ticks = 0
 
-                tw = time.monotonic() - start_time - sleep_time
-                _add_to_sleep.append(tw)
-                # if elapsed_time >= 1:
-                #     self.log.debug(
-                #         f"ts: {sleep_time}; tw: {tw}; tw-ts: {tw - sleep_time} ({statistics.fmean(_add_to_sleep)});")
+                _add_to_sleep.append(time.monotonic() - start_time - sleep_time)
             self.log.debug("tick system stopped")
         except Exception as e:
             self.log.exception(e)
@@ -377,7 +390,7 @@ class Core:
             self.log.info(i18n.init_ok)
 
             await self.heartbeat(True)
-            for i in range(int(config.Game["players"] * 2.3)):  # * 2.3 For down sock and buffer.
+            for i in range(int(config.Game["players"] * 4)):  # * 4 For down sock and buffer.
                 self.clients.append(None)
             tasks = []
             ev.register("serverTick_1s", self._check_alive)
@@ -402,7 +415,7 @@ class Core:
         except KeyboardInterrupt:
             pass
         except Exception as e:
-            self.log.error(f"Exception: {e}")
+            self.log.error(f"Exception in main:")
             self.log.exception(e)
         finally:
             await self.stop()
@@ -413,19 +426,24 @@ class Core:
     async def stop(self):
         self.run = False
         ev.call_lua_event("onShutdown")
-        await self.__gracefully_kick()
-        self.tcp.stop()
-        self.udp._stop()
-        ev.call_event("onServerStopped")
         await ev.call_async_event("onServerStopped")
-        if config.Options['use_lua']:
-            await ev.call_async_event("_lua_plugins_unload")
-        await ev.call_async_event("_plugins_unload")
-        self.run = False
-        total_time = time.monotonic() - self.start_time
-        hours = int(total_time // 3600)
-        minutes = int((total_time % 3600) // 60)
-        seconds = math.ceil(total_time % 60)
-        t = f"{'' if not hours else f'{hours} hours, '}{'' if not hours else f'{minutes} min., '}{seconds} sec."
-        self.log.info(f"Working time: {t}")
-        self.log.info(i18n.stop)
+        ev.call_event("onServerStopped")
+        try:
+            await self.__gracefully_kick()
+            await self.__gracefully_remove()
+            self.tcp.stop()
+            self.udp._stop()
+            await ev.call_async_event("_plugins_unload")
+            if config.Options['use_lua']:
+                await ev.call_async_event("_lua_plugins_unload")
+            self.run = False
+            total_time = time.monotonic() - self.start_time
+            hours = int(total_time // 3600)
+            minutes = int((total_time % 3600) // 60)
+            seconds = math.ceil(total_time % 60)
+            t = f"{'' if not hours else f'{hours} hours, '}{'' if not hours else f'{minutes} min., '}{seconds} sec."
+            self.log.info(f"Working time: {t}")
+            self.log.info(i18n.stop)
+        except Exception as e:
+            self.log.error("Error while stopping server:")
+            self.log.exception(e)

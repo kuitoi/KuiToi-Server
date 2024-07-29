@@ -9,6 +9,7 @@ import json
 
 from core import utils
 
+
 # noinspection PyProtectedMember
 class UDPServer(asyncio.DatagramTransport):
     transport = None
@@ -26,45 +27,19 @@ class UDPServer(asyncio.DatagramTransport):
     def pause_writing(self, *args, **kwargs): ...
     def resume_writing(self, *args, **kwargs): ...
 
-    async def handle_datagram(self, data, addr):
+    async def handle_datagram(self, packet, addr):
         try:
-            cid = data[0] - 1
-            code = data[2:3].decode()
-            data = data[2:].decode()
-
+            cid = packet[0] - 1
             client = self._core.get_client(cid=cid)
             if client:
                 if not client.alive:
-                    client.log.debug(f"Still sending UDP data: {data}")
-                match code:
-                    case "p":  # Ping packet
-                        ev.call_event("onSentPing", player=client)
-                        self.transport.sendto(b"p", addr)
-                    case "Z":  # Position packet
-                        if client._udp_sock != (self.transport, addr):
-                            client._udp_sock = (self.transport, addr)
-                            self.log.debug(f"Set UDP Sock for CID: {cid}")
-                        sub = data.find("{", 1)
-                        last_pos = data[sub:]
-                        try:
-                            _, car_id = client._get_cid_vid(data)
-                            if client._cars[car_id]:
-                                last_pos = json.loads(last_pos)
-                                client._last_position = last_pos
-                                client._cars[car_id]['pos'] = last_pos
-                                ev.call_event("onChangePosition", data, player=client, pos=last_pos)
-                        except Exception as e:
-                            self.log.warning(f"Cannot parse position packet: {e}")
-                            self.log.debug(f"data: '{data}', sub: {sub}")
-                            self.log.debug(f"last_pos ({type(last_pos)}): {last_pos}")
-                        await client._send(data, to_all=True, to_self=False, to_udp=True)
-                    case "X":
-                        await client._send(data, to_all=True, to_self=False, to_udp=True)
-                    case _:
-                        self.log.warning(f"UDP [{cid}] Unknown code: {code}; {data}")
+                    client.log.debug(f"Still sending UDP data: {packet}")
+                if client._udp_sock != (self.transport, addr):
+                    client._udp_sock = (self.transport, addr)
+                    self.log.debug(f"Set UDP Sock for CID: {cid}")
+                await client._udp_put(packet)
             else:
                 self.log.debug(f"[{cid}] Client not found.")
-
         except Exception as e:
             self.log.error(f"Error handle_datagram: {e}")
 

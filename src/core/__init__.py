@@ -10,7 +10,7 @@ __title__ = 'KuiToi-Server'
 __description__ = 'BeamingDrive Multiplayer server compatible with BeamMP clients.'
 __url__ = 'https://github.com/kuitoi/kuitoi-Server'
 __version__ = '0.4.8 (pre)'
-__build__ = 2542  # Я это считаю лог файлами
+__build__ = 2663  # Я это считаю лог файлами
 __author__ = 'SantaSpeen'
 __author_email__ = 'admin@kuitoi.su'
 __license__ = "FPA"
@@ -18,6 +18,7 @@ __copyright__ = 'Copyright 2024 © SantaSpeen (Maxim Khomutov)'
 
 import asyncio
 import builtins
+import sys
 import webbrowser
 
 import prompt_toolkit.shortcuts as shortcuts
@@ -36,6 +37,8 @@ if args.version:
 
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 log = get_logger("core.init")
 
 # Config file init

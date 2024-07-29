@@ -9,7 +9,7 @@ import json
 import math
 import time
 import zlib
-from asyncio import Lock
+from asyncio import Queue
 
 from core import utils
 
@@ -21,7 +21,19 @@ class Client:
         self.__writer = writer
         self._core = core
         self.__alive = True
-        self.__packets_queue = []
+
+        self.__queue_tpc = Queue()
+        self.__queue_udp = Queue()
+
+        self._tpc_count = 0
+        self._udp_count = 0
+        self._tpc_count_total = 0
+        self._udp_count_total = 0
+        self._udp_size_total = 0
+        self._tpc_size_total = 0
+        self.tcp_pps = 0
+        self.udp_pps = 0
+
         self.__tasks = []
         self._down_sock = (None, None)
         self._udp_sock = (None, None)
@@ -41,7 +53,7 @@ class Client:
         self._unicycle = {"id": -1, "packet": ""}
         self._connect_time = 0
         self._last_position = {}
-        self._lock = Lock()
+        self._last_recv = time.monotonic()
 
     @property
     def _writer(self):
@@ -132,7 +144,7 @@ class Client:
             to_all = False
         await self._send(f"C:{message}", to_all=to_all)
 
-    async def send_event(self, event_name, event_data, to_all=True):
+    async def send_event(self, event_name, event_data, to_all=False):
         self.log.debug(f"send_event: {event_name}:{event_data}; {to_all=}")
         if not self.ready:
             self.log.debug(f"Client not ready.")
@@ -142,7 +154,7 @@ class Client:
         if len(event_data) > 104857599:
             self.log.error("Client data too big! >=104857599")
             return
-        await self._send(f"E:{event_name}:{event_data}", to_all=to_all)
+        await self._send(f"E:{event_name}:{event_data}", to_all, True)
 
     async def _send(self, data, to_all=False, to_self=True, to_udp=False, writer=None):
 
@@ -181,7 +193,7 @@ class Client:
             if udp_sock and udp_addr:
                 try:
                     if not udp_sock.is_closing():
-                        # self.log.debug(f'[UDP] {data!r}')
+                        # self.log.debug(f'[UDP] {data!r}; {udp_addr}')
                         udp_sock.sendto(data, udp_addr)
                 except OSError:
                     self.log.debug("[UDP] Error sending")
@@ -220,12 +232,11 @@ class Client:
                     self.is_disconnected()
                     if self.__alive:
                         if header == b"":
-                            self.__packets_queue.append(None)
+                            await self._tpc_put(None)
                             self.__alive = False
                             continue
                         self.log.error(f"Header: {header}")
                         await self.kick("Invalid packet - header negative")
-                    self.__packets_queue.append(None)
                     continue
 
                 if int_header > 100 * MB:
@@ -233,7 +244,6 @@ class Client:
                     self.log.warning("Client sent header of >100MB - "
                                      "assuming malicious intent and disconnecting the client.")
                     self.log.error(f"Last recv: {await self.__reader.read(100 * MB)}")
-                    self.__packets_queue.append(None)
                     continue
 
                 data = b""
@@ -251,11 +261,11 @@ class Client:
 
                 if one:
                     return data
-                self.__packets_queue.append(data)
+                await self._tpc_put(data)
 
             except ConnectionError:
                 self.__alive = False
-                self.__packets_queue.append(None)
+                await self._tpc_put(None)
 
     async def _split_load(self, start, end, d_sock, filename, speed_limit=None):
         real_size = end - start
@@ -656,8 +666,8 @@ class Client:
                 self.log.info(f"{self.nick}: {msg}")
             await self._send(data, to_all=True)
 
-    async def _handle_codes(self, data):
-        if not data:
+    async def _handle_codes_tcp(self, data):
+        if data is None:
             self.__alive = False
             return
 
@@ -676,17 +686,14 @@ class Client:
         match data[0]:  # At data[0] code
             case "H":  # Map load, client ready
                 await self._connected_handler()
-
             case "C":  # Chat handler
                 if _bytes:
                     return
                 await self._chat_handler(data)
-
             case "O":  # Cars handler
                 if _bytes:
                     return
                 await self._handle_car_codes(data)
-
             case "E":  # Client events handler
                 if len(data) < 2:
                     self.log.debug("Tried to send an empty event, ignoring.")
@@ -704,7 +711,75 @@ class Client:
                 ev.call_event(event_name, data=even_data, player=self)
                 await ev.call_async_event(event_name, data=even_data, player=self)
             case _:
-                self.log.warning(f"TCP [{self.cid}] Unknown code: {data[0]}; {data}")
+                self.log.warning(f"TCP Unknown code: {data[0]}; {data}")
+
+    async def _handle_codes_udp(self, data):
+        code = data[2:3].decode()
+        data = data[2:].decode()
+        match code:
+            case "p":  # Ping packet
+                ev.call_event("onSentPing", player=self)
+                await self._send(b"p", to_udp=True)
+            case "Z":  # Position packet
+                sub = data.find("{", 1)
+                last_pos = data[sub:]
+                try:
+                    _, car_id = self._get_cid_vid(data)
+                    if self._cars[car_id]:
+                        last_pos = json.loads(last_pos)
+                        self._last_position = last_pos
+                        self._cars[car_id]['pos'] = last_pos
+                        ev.call_event("onChangePosition", data, player=self, pos=last_pos)
+                except Exception as e:
+                    self.log.warning(f"Cannot parse position packet: {e}")
+                    self.log.debug(f"data: '{data}', sub: {sub}")
+                    self.log.debug(f"last_pos ({type(last_pos)}): {last_pos}")
+                await self._send(data, True, False, True)
+            case "X":
+                await self._send(data, True, False, True)
+            case _:
+                self.log.warning(f"UDP Unknown code: {code}; {data}")
+
+    def _tick_pps(self, _):
+        self.tcp_pps = self._tpc_count
+        self.udp_pps = self._udp_count
+        self._tpc_count = 0
+        self._udp_count = 0
+        if self.tcp_pps > self._core.target_tps or self.udp_pps > self._core.target_tps:
+            self.log.warning(f"PPS > TPS; PPS: TPC: {self.tcp_pps}, UDP: {self.udp_pps}")
+
+    async def __tick_player_tpc(self, _):
+        try:
+            if self.__queue_tpc.qsize() > 0:
+                packet = await self.__queue_tpc.get()
+                if packet is None:
+                    return await self._remove_me()
+                await self._handle_codes_tcp(packet)
+        except Exception as e:
+            self.log.error(f'[TPC] Error while ticking player:')
+            self.log.exception(e)
+
+    async def __tick_player_udp(self, _):
+        try:
+            if self.__queue_udp.qsize() > 0:
+                packet = await self.__queue_udp.get()
+                await self._handle_codes_udp(packet)
+        except Exception as e:
+            self.log.error(f'[UDP] Error while ticking player:')
+            self.log.exception(e)
+
+    async def _tpc_put(self, packet):
+        if packet:
+            self._tpc_count += 1
+            self._tpc_count_total += 1
+            self._tpc_size_total += len(packet)
+        await self.__queue_tpc.put(packet)
+
+    async def _udp_put(self, packet):
+        self._udp_count += 1
+        self._udp_count_total += 1
+        self._udp_size_total += len(packet)
+        await self.__queue_udp.put(packet)
 
     async def _looper(self):
         ev.call_lua_event("onPlayerConnecting", self.cid)
@@ -712,58 +787,47 @@ class Client:
         await self._send(f"P{self.cid}")  # Send clientID
         await self._sync_resources()
         ev.call_lua_event("onPlayerJoining", self.cid)
-        tasks = self.__tasks
-        recv = asyncio.create_task(self._recv())
-        tasks.append(recv)
-        self._synced = True
-        while self.__alive:
-            if len(self.__packets_queue) > 0:
-                for index, packet in enumerate(self.__packets_queue):
-                    # self.log.debug(f"Packet: {packet}")
-                    del self.__packets_queue[index]
-                    task = self._loop.create_task(self._handle_codes(packet))
-                    tasks.append(task)
-            else:
-                await asyncio.sleep(0.1)
-        await asyncio.gather(*tasks)
+        ev.register("serverTick", self.__tick_player_tpc)
+        ev.register("serverTick", self.__tick_player_udp)
+        ev.register("serverTick_1s", self._tick_pps)
+        await self._recv()
 
     async def _remove_me(self):
         await asyncio.sleep(0.3)
         self.__alive = False
-        if (self.cid > 0 or self.nick is not None) and \
-                self._core.clients_by_nick.get(self.nick):
+        if self._core.clients_by_nick.get(self.nick):
             for i, car in enumerate(self._cars):
                 if not car:
                     continue
                 self.log.debug(f"Removing car: car_id={i}")
                 await self._send(f"Od:{self.cid}-{i}", to_all=True, to_self=False)
             if self.ready:
-                await self._send(f"J{self.nick} disconnected!", to_all=True, to_self=False)  # I'm disconnected.
+                await self._send(f"J{self.nick} disconnected!", to_all=True, to_self=False)
             self.log.debug(f"Removing client")
             ev.call_lua_event("onPlayerDisconnect", self.cid)
             ev.call_event("onPlayerDisconnect", player=self)
             await ev.call_async_event("onPlayerDisconnect", player=self)
-
-            self.log.info(
-                i18n.client_player_disconnected.format(
-                    round((time.monotonic() - self._connect_time) / 60, 2)
-                )
-            )
+            ev.unregister(self.__tick_player_tpc)
+            ev.unregister(self.__tick_player_udp)
+            ev.unregister(self._tick_pps)
+            gt = round((time.monotonic() - self._connect_time) / 60, 2)
+            self.log.info(i18n.client_player_disconnected.format(gt))
             self._core.clients[self.cid] = None
             del self._core.clients_by_id[self.cid]
             del self._core.clients_by_nick[self.nick]
         else:
             self.log.debug(f"Removing client; Closing connection...")
+        self.log.debug(f"TPC: Packets: {self._tpc_count_total}; Size: {self._tpc_size_total}")
+        self.log.debug(f"UDP: Packets: {self._udp_size_total}; Size: {self._udp_size_total}")
+        await asyncio.sleep(0.001)
         try:
-            if not self.__writer.is_closing():
-                self.__writer.close()
-                await self.__writer.wait_closed()
+            self.__writer.close()
+            await self.__writer.wait_closed()
         except Exception as e:
             self.log.debug(f"Error while closing writer: {e}")
         try:
             _, down_w = self._down_sock
-            if down_w and not down_w.is_closing():
-                down_w.close()
-                await down_w.wait_closed()
+            down_w.close()
+            await down_w.wait_closed()
         except Exception as e:
             self.log.debug(f"Error while closing download writer: {e}")

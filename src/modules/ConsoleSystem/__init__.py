@@ -15,10 +15,12 @@ from prompt_toolkit import PromptSession, print_formatted_text, HTML
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import NestedCompleter
 from prompt_toolkit.history import FileHistory
+
 try:
     from prompt_toolkit.output.win32 import NoConsoleScreenBufferError
 except AssertionError:
-    class NoConsoleScreenBufferError(Exception): ...
+    class NoConsoleScreenBufferError(Exception):
+        ...
 from prompt_toolkit.patch_stdout import patch_stdout
 
 from core import get_logger
@@ -122,6 +124,22 @@ class Console:
 
     def __update_completer(self):
         self.completer = NestedCompleter.from_nested_dict(self.__alias)
+
+    def del_command(self, func):
+        self.__debug(f"delete command: func={func};")
+        keys = []
+        for k, v in self.__func.items():
+            if v['f'] is func:
+                keys.append(k)
+        for key in keys:
+            self.__debug(f"Delete: key={key}")
+            self.__alias.pop(key)
+            self.__alias["man"].pop(key)
+            self.__func.pop(key)
+            self.__man.pop(key)
+            self.__desc.pop(key)
+        self.__debug("Deleted.")
+        self.__update_completer()
 
     def add_command(self, key: str, func, man: str = None, desc: str = None, custom_completer: dict = None) -> dict:
         key = key.format(" ", "-")
@@ -258,6 +276,8 @@ class Console:
                             self.log(self.__not_found % cmd)
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
+            except ConnectionResetError as e:
+                self.__debug(f"ConnectionResetError {e}")
             except Exception as e:
                 print(f"Error in console.py: {e}")
                 self.__logger.exception(e)

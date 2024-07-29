@@ -177,8 +177,10 @@ class TCPServer:
             raise e
         except KeyboardInterrupt:
             pass
+        except ConnectionResetError as e:
+            self.log.debug(f"ConnectionResetError {e}")
         except Exception as e:
-            self.log.error(f"Error: {e}")
+            self.log.exception(e)
             raise e
         finally:
             self.run = False

@@ -31,7 +31,7 @@ class KuiToi:
         self.__name = name
         self.__dir = Path(self._plugins_dir) / self.__name
         os.makedirs(self.__dir, exist_ok=True)
-        self.__events_funcs = []
+        self.__funcs = []
         self.register_event = self.register
 
     @property
@@ -67,11 +67,12 @@ class KuiToi:
 
     def register(self, event_name, event_func):
         self.log.debug(f"Registering event {event_name}")
-        self.__events_funcs.append(event_func)
+        self.__funcs.append(event_func)
         ev.register(event_name, event_func)
 
     def _unload(self):
-        for f in self.__events_funcs:
+        for f in self.__funcs:
+            console.del_command(f)
             ev.unregister(f)
 
     def call_event(self, event_name, *args, **kwargs):
@@ -106,6 +107,7 @@ class KuiToi:
 
     def add_command(self, key, func, man, desc, custom_completer) -> dict:
         self.log.debug("Requests add_command")
+        self.__funcs.append(func)
         return console.add_command(key, func, man, desc, custom_completer)
 
 
@@ -139,12 +141,15 @@ class PluginsLoader:
                     ok, _, file, _ = await self._unload_by_name(x[1], True)
                     if ok:
                         if await self._load_by_file(file):
+                            self.plugins[x[1]]['plugin'].start()
                             return f"Plugin reloaded ({time.monotonic() - t1:.1f}sec)"
                     return "Plugin not found"
                 return usage
             case 'load':
                 if len(x) == 2:
-                    if await self._load_by_file(x[1]):
+                    name = await self._load_by_file(x[1])
+                    if name:
+                        self.plugins[name]['plugin'].start()
                         return "Plugin loaded"
                 return usage
             case 'unload':
@@ -241,7 +246,7 @@ class PluginsLoader:
                     th.join()
                 self.loaded.append((pl_name, True))
                 self.log.debug(f"Plugin loaded: {file}. Settings: {self.plugins[pl_name]}")
-                return True
+                return pl_name
             except Exception as e:
                 self.loaded.append((file, False))
                 self.log.error(i18n.plugins_error_loading.format(file, f"{e}"))

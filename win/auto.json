@@ -60,6 +60,10 @@
   {
    "optionDest": "bootloader_ignore_signals",
    "value": false
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/SantaSpeen/PycharmProjects/KuiToi-Server/src/modules/PluginsLoader/add_in.lua;."
   }
  ],
  "nonPyinstallerOptions": {

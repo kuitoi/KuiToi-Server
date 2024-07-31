@@ -88,11 +88,11 @@ class KuiToi:
         return ev.call_lua_event(event_name, *args)
 
     def get_player(self, pid=None, nick=None, cid=None):
-        self.log.debug("Requests get_player")
+        # self.log.debug("Requests get_player")
         return ev.call_event("_get_player", cid=cid or pid, nick=nick)[0]
 
     def get_players(self):
-        self.log.debug("Requests get_players")
+        # self.log.debug("Requests get_players")
         return self.get_player(-1)
 
     def players_counter(self):

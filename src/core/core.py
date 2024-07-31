@@ -307,7 +307,7 @@ class Core:
                                                  f"{calc_ticks(ticks_60s, 60):.2f}.",
                                 None, "Print TPS", {"tps": None})
             _add_to_sleep = deque([0.0, 0.0, 0.0,], maxlen=3 * int(target_tps))
-            _t0 = []
+            # _t0 = []
 
             self.log.debug("tick system started")
             while self.run:
@@ -320,7 +320,7 @@ class Core:
                 # Calculate the time taken for this tick
                 end_time = time.monotonic()
                 tick_duration = end_time - start_time
-                _t0.append(tick_duration)
+                # _t0.append(tick_duration)
 
                 # Calculate the time to sleep to maintain target TPS
                 sleep_time = target_interval - tick_duration - statistics.fmean(_add_to_sleep)
@@ -342,10 +342,10 @@ class Core:
                     # if self.tps < 5:
                     #     self.log.warning(f"Low TPS: {self.tps:.2f}")
                     # Reset for next calculation
-                    _t0s = max(_t0), min(_t0), statistics.fmean(_t0)
-                    _tw = max(_add_to_sleep), min(_add_to_sleep), statistics.fmean(_add_to_sleep)
-                    self.log.debug(f"[{'OK' if sleep_time > 0 else "CHECK"}] TPS: {self.tps:.2f}; Tt={_t0s}; Ts={sleep_time}; Tw={_tw}")
-                    _t0 = []
+                    # _t0s = max(_t0), min(_t0), statistics.fmean(_t0)
+                    # _tw = max(_add_to_sleep), min(_add_to_sleep), statistics.fmean(_add_to_sleep)
+                    # self.log.debug(f"[{'OK' if sleep_time > 0 else "CHECK"}] TPS: {self.tps:.2f}; Tt={_t0s}; Ts={sleep_time}; Tw={_tw}")
+                    # _t0 = []
                     last_tick_time = current_time
                     ticks = 0
 

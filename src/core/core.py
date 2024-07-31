@@ -65,7 +65,9 @@ class Core:
         ev.register("_get_BeamMP_version", lambda x: tuple([int(i) for i in self.BeamMP_version.split(".")]))
         ev.register("_get_player", lambda x: self.get_client(**x['kwargs']))
 
-    def get_client(self, cid=None, nick=None):
+    def get_client(self, cid=None, nick=None, raw=False):
+        if raw:
+            return self.clients_by_nick
         if (cid, nick) == (None, None):
             return None
         if cid is not None:
@@ -253,7 +255,7 @@ class Core:
 
     async def kick_cmd(self, args):
         if not len(args) > 0:
-            return "\nUsage: kick <nick>|:<id> [reason]\nExamples:\n\tkick admin bad boy\n\tkick :0 bad boy"
+            return "Usage: kick <nick>|:<id> [reason]\nExamples:\n\tkick admin bad boy\n\tkick :0 bad boy"
         reason = "kicked by console."
         if len(args) > 1:
             reason = " ".join(args[1:])
@@ -359,18 +361,23 @@ class Core:
             "list",
             lambda x: f"Players list: {self.get_clients_list(True)}"
         )
-        console.add_command("kick", self.kick_cmd)
+        console.add_command("kick", self.kick_cmd, "kick - Kick user\n"
+                                                   "Usage: kick NICK|:{ID} [REASON]\n"
+                                                   "Examples:\n"
+                                                   "  <white>></white> <b><skyblue>kick admin bad boy</skyblue></b>\n"
+                                                   "  <white>></white> <b><skyblue>kick :0 bad boy</skyblue></b>",
+                            "kick user", {"kick": "<playerlist>"})
 
         pl_dir = "plugins"
         self.log.debug("Initializing PluginsLoaders...")
         if not os.path.exists(pl_dir):
             os.mkdir(pl_dir)
         pl = PluginsLoader(pl_dir)
-        await pl.load()
         if config.Options['use_lua']:
             from modules.PluginsLoader.lua_plugins_loader import LuaPluginsLoader
             lpl = LuaPluginsLoader(pl_dir)
             lpl.load()
+        await pl.load()
 
         try:
             # Mods handler

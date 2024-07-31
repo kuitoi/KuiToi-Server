@@ -146,17 +146,18 @@ class Client:
             ms = message.split("\n")
             for m in ms:
                 await self.send_message(m, to_all)
+            return
         await self._send(f"C:{message}", to_all=to_all)
 
     async def send_event(self, event_name, event_data, to_all=False):
         self.log.debug(f"send_event: {event_name}:{event_data}; {to_all=}")
         if not self.ready:
-            self.log.debug(f"Client not ready.")
+            self.log.debug(f"Client not ready. {event_data=}")
             return
         if isinstance(event_data, (list, tuple, dict)):
             event_data = json.dumps(event_data, separators=(',', ':'))
-        if len(event_data) > 104857599:
-            self.log.error("Client data too big! >=104857599")
+        if len(event_data) > 99 * MB:
+            self.log.error(f"Error while preparing event {event_name!r}: data too big! data>99MB")
             return
         await self._send(f"E:{event_name}:{event_data}", to_all, True)
 
@@ -620,6 +621,7 @@ class Client:
 
         self.log.info(i18n.client_sync_time.format(round(time.monotonic() - self._connect_time, 2)))
         self._ready = True
+        self._synced = True
         ev.call_event("onPlayerReady", player=self)
         await ev.call_async_event("onPlayerReady", player=self)
 
@@ -631,40 +633,46 @@ class Client:
         if not msg:
             self.log.debug("Tried to send an empty event, ignoring")
             return
-        to_ev = {"message": msg, "player": self}
         lua_data = ev.call_lua_event("onChatMessage", self.cid, self.nick, msg)
         if 1 in lua_data:
             if config.Options['log_chat']:
                 self.log.info(f"{self.nick}: {msg}")
             return
-        ev_data_list = ev.call_event("onChatReceive", **to_ev)
-        d2 = await ev.call_async_event("onChatReceive", **to_ev)
-        ev_data_list.extend(d2)
+        event_data = await ev.call_as_events("onChatReceive", message=msg, player=self)
         need_send = True
-        for ev_data in ev_data_list:
-            if ev_data is None:
+        for event in event_data:
+            if event is None:
                 continue
             try:
-                message = ev_data["message"]
-                to_all = ev_data.get("to_all")
-                if to_all is None:
-                    to_all = True
-                to_self = ev_data.get("to_self")
-                if to_self is None:
-                    to_self = True
-                to_client = ev_data.get("to_client")
                 writer = None
-                if to_client:
-                    # noinspection PyProtectedMember
-                    writer = to_client._writer
+                to_all = True
+                to_self = True
+                message = msg
+                if event is False:
+                    need_send = False
+                    continue
+                if isinstance(event, str):
+                    to_all = False
+                    message = event
+                elif isinstance(event, int):
+                    if event == 0:
+                        need_send = False
+                        continue
+                else:
+                    message = event["message"]
+                    to_all = event.get("to_all")
+                    to_self = event.get("to_self")
+                    to_client = event.get("to")
+                    if to_client:
+                        writer = to_client._writer
                 if config.Options['log_chat']:
-                    self.log.info(f"{message}" if to_all else f"{self.nick}: {msg}")
+                    self.log.info(f"[local] {message}" if to_all else f"{self.nick}: {msg}")
                 await self._send(f"C:{message}", to_all=to_all, to_self=to_self, writer=writer)
                 need_send = False
             except KeyError:
-                self.log.error(i18n.client_event_invalid_data.format(ev_data))
+                self.log.error(i18n.client_event_invalid_data.format(event))
             except AttributeError:
-                self.log.error(i18n.client_event_invalid_data.format(ev_data))
+                self.log.error(i18n.client_event_invalid_data.format(event))
         if need_send:
             if config.Options['log_chat']:
                 self.log.info(f"{self.nick}: {msg}")

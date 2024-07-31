@@ -193,6 +193,8 @@ class TCPServer:
     def stop(self):
         self.log.debug("Stopping TCP server")
         try:
+            if not self.server:
+                return
             self.server.close()
             for conn in self._connections:
                 self.log.debug(f"Closing {conn}")

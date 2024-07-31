@@ -109,7 +109,7 @@ class EventsSystem:
                 if f is func:
                     a += 1
                     self.__async_events[k].remove(func)
-        self.log.debug(f"unregister in {s+a} events; S:{s}; A:{a};")
+        self.log.debug(f"unregister in {s + a} events; S:{s}; A:{a};")
 
     def is_event(self, event_name):
         return (event_name in self.__async_events.keys() or
@@ -141,6 +141,9 @@ class EventsSystem:
             self.__events[event_name].append(event_func)
             self.log.debug("Register ok")
 
+    async def call_as_events(self, *args, **kwargs):
+        return await self.call_async_event(*args, **kwargs) + self.call_event(*args, **kwargs)
+
     async def call_async_event(self, event_name, *args, **kwargs):
         if not event_name.startswith("serverTick"):
             self.log.debug(f"Calling async event: '{event_name}'")
@@ -162,6 +165,7 @@ class EventsSystem:
     def call_event(self, event_name: str, *args, **kwargs):
         if event_name not in (
                 "onChangePosition", "onSentPing",  # UDP events
+                "_get_player"
         ) and not event_name.startswith("serverTick"):
             self.log.debug(f"Calling sync event: '{event_name}'")
         funcs_data = []

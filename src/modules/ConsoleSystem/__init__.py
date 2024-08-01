@@ -11,7 +11,7 @@ import inspect
 import logging
 from typing import AnyStr
 
-from prompt_toolkit import PromptSession, print_formatted_text, HTML
+from prompt_toolkit import PromptSession, print_formatted_text, HTML, ANSI
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import Completer, WordCompleter
 from prompt_toolkit.document import Document
@@ -232,13 +232,17 @@ class Console:
         return self.__alias.copy()
 
     def _write(self, text):
+        # https://python-prompt-toolkit.readthedocs.io/en/master/pages/printing_text.html#formatted-text
         if self.__legacy_mode:
             print(text)
             return
+        assert isinstance(text, str)
         _type = text.split(":")[0]
         match _type:
             case "html":
                 print_formatted_text(HTML(text[5:]))
+            case "ansi":
+                print_formatted_text(ANSI(text[5:]))
             case _:
                 print_formatted_text(text)
 

@@ -21,12 +21,18 @@ class Client:
         self.__writer = writer
         self.__queue_tpc = Queue()
         self.__queue_udp = Queue()
-        self._tpc_count = 0
-        self._udp_count = 0
-        self._tpc_count_total = 0
-        self._udp_count_total = 0
-        self._udp_size_total = 0
-        self._tpc_size_total = 0
+        self._tpc_count_recv = 0
+        self._udp_count_recv = 0
+        self._tpc_count_total_recv = 0
+        self._udp_count_total_recv = 0
+        self._udp_size_total_recv = 0.1
+        self._tpc_size_total_recv = 0.1
+        # self._tpc_count_sent = 0
+        # self._udp_count_sent = 0
+        self._tpc_count_total_sent = 0
+        self._udp_count_total_sent = 0
+        self._udp_size_total_sent = 0.1
+        self._tpc_size_total_sent = 0.1
         self.tcp_pps = 0
         self.udp_pps = 0
         self._udp_sock: Tuple[DatagramTransport | None, Tuple[str, int] | None] = (None, None)
@@ -99,7 +105,7 @@ class Client:
     async def _handle_codes_tcp(self, data: bytes) -> None: ...
     async def _handle_codes_udp(self, data: bytes) -> None: ...
     def _tick_pps(self, _): ...
-    async def __tick_player_tpc(self, _): ...
+    async def __tick_player_tcp(self, _): ...
     async def __tick_player_udp(self, _): ...
     async def _tpc_put(self, data): ...
     async def _udp_put(self, data): ...

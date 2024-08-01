@@ -25,12 +25,20 @@ class Client:
         self.__queue_tpc = Queue()
         self.__queue_udp = Queue()
 
-        self._tpc_count = 0
-        self._udp_count = 0
-        self._tpc_count_total = 0
-        self._udp_count_total = 0
-        self._udp_size_total = 0
-        self._tpc_size_total = 0
+        self._tpc_count_recv = 0
+        self._udp_count_recv = 0
+        self._tpc_count_total_recv = 0
+        self._udp_count_total_recv = 0
+        self._udp_size_total_recv = 0.1
+        self._tpc_size_total_recv = 0.1
+
+        # self._tpc_count_sent = 0
+        # self._udp_count_sent = 0
+        self._tpc_count_total_sent = 0
+        self._udp_count_total_sent = 0
+        self._udp_size_total_sent = 0.1
+        self._tpc_size_total_sent = 0.1
+
         self.tcp_pps = 0
         self.udp_pps = 0
 
@@ -199,6 +207,8 @@ class Client:
                 try:
                     if not udp_sock.is_closing():
                         # self.log.debug(f'[UDP] {data!r}; {udp_addr}')
+                        self._udp_count_total_sent += 1
+                        self._udp_size_total_sent += len(data)
                         udp_sock.sendto(data, udp_addr)
                 except OSError:
                     self.log.debug("[UDP] Error sending")
@@ -208,9 +218,12 @@ class Client:
             return
 
         header = len(data).to_bytes(4, "little", signed=True)
-        # self.log.debug(f'[TCP] {header + data!r}')
+        data = header + data
+        # self.log.debug(f'[TCP] {data!r}')
         try:
-            writer.write(header + data)
+            self._tpc_count_total_sent += 1
+            self._tpc_size_total_sent += len(data)
+            writer.write(data)
             await writer.drain()
             return True
         except Exception as e:
@@ -753,14 +766,14 @@ class Client:
                 self.log.warning(f"UDP Unknown code: {code}; {data}")
 
     def _tick_pps(self, _):
-        self.tcp_pps = self._tpc_count
-        self.udp_pps = self._udp_count
-        self._tpc_count = 0
-        self._udp_count = 0
+        self.tcp_pps = self._tpc_count_recv
+        self.udp_pps = self._udp_count_recv
+        self._tpc_count_recv = 0
+        self._udp_count_recv = 0
         if self.tcp_pps > self._core.target_tps or self.udp_pps > self._core.target_tps:
             self.log.warning(f"PPS > TPS; PPS: TPC: {self.tcp_pps}, UDP: {self.udp_pps}")
 
-    async def __tick_player_tpc(self, _):
+    async def __tick_player_tcp(self, _):
         try:
             if self.__queue_tpc.qsize() > 0:
                 packet = await self.__queue_tpc.get()
@@ -782,15 +795,15 @@ class Client:
 
     async def _tpc_put(self, packet):
         if packet:
-            self._tpc_count += 1
-            self._tpc_count_total += 1
-            self._tpc_size_total += len(packet)
+            self._tpc_count_recv += 1
+            self._tpc_count_total_recv += 1
+            self._tpc_size_total_recv += len(packet)
         await self.__queue_tpc.put(packet)
 
     async def _udp_put(self, packet):
-        self._udp_count += 1
-        self._udp_count_total += 1
-        self._udp_size_total += len(packet)
+        self._udp_count_recv += 1
+        self._udp_count_total_recv += 1
+        self._udp_size_total_recv += len(packet)
         await self.__queue_udp.put(packet)
 
     async def _looper(self):
@@ -799,7 +812,7 @@ class Client:
         await self._send(f"P{self.cid}")  # Send clientID
         await self._sync_resources()
         ev.call_lua_event("onPlayerJoining", self.cid)
-        ev.register("serverTick", self.__tick_player_tpc)
+        ev.register("serverTick", self.__tick_player_tcp)
         ev.register("serverTick", self.__tick_player_udp)
         ev.register("serverTick_1s", self._tick_pps)
         await self._recv()
@@ -819,7 +832,7 @@ class Client:
             ev.call_lua_event("onPlayerDisconnect", self.cid)
             ev.call_event("onPlayerDisconnect", player=self)
             await ev.call_async_event("onPlayerDisconnect", player=self)
-            ev.unregister(self.__tick_player_tpc)
+            ev.unregister(self.__tick_player_tcp)
             ev.unregister(self.__tick_player_udp)
             ev.unregister(self._tick_pps)
             gt = round((time.monotonic() - self._connect_time) / 60, 2)
@@ -829,8 +842,8 @@ class Client:
             del self._core.clients_by_nick[self.nick]
         else:
             self.log.debug(f"Removing client; Closing connection...")
-        self.log.debug(f"TPC: Packets: {self._tpc_count_total}; Size: {self._tpc_size_total}")
-        self.log.debug(f"UDP: Packets: {self._udp_size_total}; Size: {self._udp_size_total}")
+        self.log.debug(f"TPC: Recv: {self._tpc_count_total_recv}; {self._tpc_size_total_recv / KB:.4f}kb; Sent: {self._tpc_count_total_sent}; {self._tpc_size_total_sent / KB:.4f}kb;")
+        self.log.debug(f"UDP: Recv: {self._udp_count_total_recv}; {self._udp_size_total_recv / KB:.4f}kb; Sent: {self._udp_count_total_sent}; {self._udp_size_total_sent / KB:.4f}kb;")
         await asyncio.sleep(0.001)
         try:
             self.__writer.close()

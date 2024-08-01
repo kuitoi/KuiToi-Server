@@ -9,10 +9,10 @@
 __title__ = 'KuiToi-Server'
 __description__ = 'BeamingDrive Multiplayer server compatible with BeamMP clients.'
 __url__ = 'https://github.com/kuitoi/kuitoi-Server'
-__version__ = '0.4.8 (pre)'
-__build__ = 2664  # Я это считаю лог файлами
+__version__ = '0.4.8'
+__build__ = 2676  # Я это считаю лог файлами
 __author__ = 'SantaSpeen'
-__author_email__ = 'admin@kuitoi.su'
+__author_email__ = 'admin@anidev.ru'
 __license__ = "FPA"
 __copyright__ = 'Copyright 2024 © SantaSpeen (Maxim Khomutov)'
 

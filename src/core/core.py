@@ -54,7 +54,7 @@ class Core:
         self.tcp_pps = 0
         self.udp_pps = 0
 
-        self.tps = 10
+        self.tps = 60
         self.target_tps = 60
 
         self.lock_upload = False
@@ -291,6 +291,27 @@ class Core:
         if self.tick_counter == (60 * self.target_tps):
             self.tick_counter = 0
 
+    def _get_color_tps(self, ticks, d):
+        tps = calc_ticks(ticks, d)
+        half = self.target_tps // 2
+        qw = self.target_tps // 4
+        if tps > half+qw:
+            return f"<green><b>{tps:.2f}</b></green>"
+        elif tps > half:
+            return f"<yellow><b>{tps:.2f}</b></yellow>"
+        elif half > tps:
+            return f"<red><b>{tps:.2f}</b></red>"
+
+    def _cmd_tps(self, ticks_2s, ticks_5s, ticks_30s, ticks_60s):
+        t = ["-, ", "-, ", "-."]
+        if len(ticks_5s) > 5 * self.target_tps:
+            t[0] = f"{self._get_color_tps(ticks_5s, 5)}, "
+        if len(ticks_30s) > 30 * self.target_tps:
+            t[1] = f"{self._get_color_tps(ticks_30s, 30)}, "
+        if len(ticks_60s) > 60 * self.target_tps:
+            t[2] = f"{self._get_color_tps(ticks_60s, 60)}."
+        return f"html:{self._get_color_tps(ticks_2s, 2)} TPS; For last 5s, 30s, 60s: " + "".join(t)
+
     async def _tick(self):
         try:
             ticks = 0
@@ -301,10 +322,7 @@ class Core:
             ticks_5s = deque(maxlen=5 * int(target_tps) + 1)
             ticks_30s = deque(maxlen=30 * int(target_tps) + 1)
             ticks_60s = deque(maxlen=60 * int(target_tps) + 1)
-            console.add_command("tps", lambda _: f"{calc_ticks(ticks_2s, 2):.2f}TPS; For last 5s, 30s, 60s: "
-                                                 f"{calc_ticks(ticks_5s, 5):.2f}, "
-                                                 f"{calc_ticks(ticks_30s, 30):.2f}, "
-                                                 f"{calc_ticks(ticks_60s, 60):.2f}.",
+            console.add_command("tps", lambda _: self._cmd_tps(ticks_2s, ticks_5s, ticks_30s, ticks_60s),
                                 None, "Print TPS", {"tps": None})
             _add_to_sleep = deque([0.0, 0.0, 0.0,], maxlen=3 * int(target_tps))
             # _t0 = []

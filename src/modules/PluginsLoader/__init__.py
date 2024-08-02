@@ -11,12 +11,22 @@ import inspect
 import os
 import subprocess
 import sys
+import textwrap
 import time
 import types
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Thread
 
+from prompt_toolkit import PromptSession, HTML
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.lexers import PygmentsLexer
+try:
+    from pygments.lexers.python import Python3Lexer
+except ImportError:
+    print("ImportError: Python3Lexer")
+    exit(1)
 from core import get_logger
 
 
@@ -67,13 +77,13 @@ class KuiToi:
 
     def register(self, event_name, event_func):
         self.log.debug(f"Registering event {event_name}")
-        self.__funcs.append(event_func)
-        ev.register(event_name, event_func)
+        _id = ev.register(event_name, event_func)
+        self.__funcs.append(_id)
 
     def _unload(self):
         for f in self.__funcs:
             console.del_command(f)
-            ev.unregister(f)
+            ev.unregister_by_id(f)
 
     def call_event(self, event_name, *args, **kwargs):
         self.log.debug(f"Called event {event_name}")
@@ -121,17 +131,88 @@ class PluginsLoader:
         self.plugins_dir = plugins_dir
         self.log = get_logger("PluginsLoader")
         self.loaded = []
+        self.pl_completer = Completer({})
+        self.pl_files_completer = Completer({})
+        self._scan_dir(None)
+        ev.register("serverTick_5s", self._scan_dir)
         ev.register("_plugins_start", self.start)
         ev.register("_plugins_unload", self.unload)
-        ev.register("_plugins_get", lambda _: "Plugins: " + ", ".join(f"{i[0]}:{'on' if i[1] else 'off'}" for i in self.loaded))
-        console.add_command("plugins", self._parse_console, None, "Plugins manipulations", {"plugins": {"reload", "load", "unload", "list"}})
-        console.add_command("pl", lambda _: ev.call_event("_plugins_get")[0])
+        ev.register("_plugins_get",
+                    lambda _: "Plugins: " + ", ".join(f"{i[0]}:{'on' if i[1] else 'off'}" for i in self.loaded))
+        console.add_command("plugins", self._parse_console, None, "Plugins manipulations",
+                            {"plugins": {
+                                "reload": self.pl_completer,
+                                "load": self.pl_files_completer,
+                                "unload": self.pl_completer,
+                                "list": None,
+                            }})
+        console.add_command("plugin", self._plugin_console, None, "plugin console", {"plugin": self.pl_completer})
         sys.path.append(self._pip_dir)
         os.makedirs(self._pip_dir, exist_ok=True)
         console.add_command("install", self._pip_install)
 
+    def _scan_dir(self, _):
+        _load = {}
+        for file in os.listdir(self.plugins_dir):
+            file_path = os.path.join(self.plugins_dir, file)
+            if os.path.isfile(file_path) and file.endswith(".py"):
+                _load[file] = None
+        self.pl_files_completer.load(_load)
+
+    async def _plugin_console(self, x):
+        usage = 'Usage: plugin <name>'
+        if not x:
+            return usage
+        if x[0] in self.plugins:
+            plugin = self.plugins[x[0]]['plugin']
+            kt: KuiToi = plugin.kt
+            work = True
+            session = None
+            if not console.legacy_mode:
+                session = PromptSession(history=FileHistory(f'{kt.dir}/.cmdhistory'), lexer=PygmentsLexer(Python3Lexer))
+
+            def bottom_toolbar():
+                x = lambda x: f'<b><style bg="ansired">{x}</style></b>'
+                c = lambda c: f'<style fg="#b3d6f4">{x(c)}</style>'
+                return HTML(f'[PluginConsole KuiToi@{x(kt.name)}] {c("^D")} Return to the main console {c("^C")} Exit ')
+            while work:
+                try:
+                    if session:
+                        inp = await session.prompt_async(">> ", auto_suggest=AutoSuggestFromHistory(), bottom_toolbar=bottom_toolbar)
+                    else:
+                        inp = input(f"@{kt.name} > ")
+                    self.log.debug(f"[_plugin_console] {inp=}")
+                    if inp == "exit":
+                        return "Exited"
+                    if not inp:
+                        continue
+                    if inp.split(' ')[0] in ['import', 'from']:
+                        kt.log.warning("Imports not allowed here... Sorry bro.")
+                        continue
+                    code = textwrap.dedent(f"""\
+                    async def _console():
+                        try:
+                            i = {inp}
+                            if i:
+                                print(f"{{i!r}}")
+                        except Exception as e:
+                            kt.log.exception(e)""")
+                    exec(code, plugin.__dict__)
+                    kt.log.debug(await plugin._console())
+                except SyntaxError as e:
+                    kt.log.error(f"SyntaxError: {e.msg}")
+                except EOFError:
+                    return
+                except KeyboardInterrupt as e:
+                    raise e
+                except UnicodeDecodeError as e:
+                    raise e
+                except Exception as e:
+                    kt.log.exception(e)
+        return "Plugin not found"
+
     async def _parse_console(self, x):
-        usage = 'Usage: plugin [reload <name> | load <file.py> | unload <name> | list]'
+        usage = 'Usage: plugins [reload <name> | load <file.py> | unload <name> | list]'
         if not x:
             return usage
         match x[0]:
@@ -244,6 +325,7 @@ class PluginsLoader:
                     th = Thread(target=plugin.load, name=f"{pl_name}.load()")
                     th.start()
                     th.join()
+                self.pl_completer.options[pl_name] = None
                 self.loaded.append((pl_name, True))
                 self.log.debug(f"Plugin loaded: {file}. Settings: {self.plugins[pl_name]}")
                 return pl_name
@@ -283,22 +365,20 @@ class PluginsLoader:
     async def start(self, _):
         for pl_name, pl_data in self.plugins.items():
             try:
+                func = pl_data['start']['func']
                 if pl_data['start']['async']:
                     self.log.debug(f"Start async plugin: {pl_name}")
-                    t = self.loop.create_task(pl_data['start']['func']())
-                    self.plugins_tasks.append(t)
+                    t = self.loop.create_task(func())
                 else:
                     self.log.debug(f"Start sync plugin: {pl_name}")
-                    th = Thread(target=pl_data['start']['func'], name=f"Thread {pl_name}")
-                    th.start()
-                    self.plugins_tasks.append(th)
+                    t = self.loop.create_task(asyncio.to_thread(func))
+                self.plugins_tasks.append(t)
             except Exception as e:
                 self.log.exception(e)
 
     async def unload(self, _):
         t = []
         for n in self.plugins.keys():
-            await asyncio.sleep(0.01)
             t.append(self._unload_by_name(n))
         self.log.debug(await asyncio.gather(*t))
         self.log.debug("Plugins unloaded")

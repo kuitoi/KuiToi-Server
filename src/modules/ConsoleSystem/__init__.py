@@ -144,6 +144,10 @@ class Console:
         rcon.console = self
         self.rcon = rcon
 
+    @property
+    def legacy_mode(self):
+        return self.__legacy_mode
+
     def __debug(self, *x):
         self.__logger.debug(' '.join(x))
         # if self.__is_debug:
@@ -213,13 +217,14 @@ class Console:
             if v['f'] is func:
                 keys.append(k)
         for key in keys:
-            self.__debug(f"Delete: key={key}")
+            self.__debug(f"{key=}")
             self.__alias.pop(key)
             self.__alias["man"].pop(key)
             self.__func.pop(key)
             self.__man.pop(key)
             self.__desc.pop(key)
-        self.__debug("Deleted.")
+        if keys:
+            self.__debug("Deleted.")
         self.completer.load(self.__alias)
 
     def add_command(self, key: str, func, man: str = None, desc: str = None, custom_completer: dict = None) -> dict:

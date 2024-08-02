@@ -96,17 +96,34 @@ class EventsSystem:
         self.log.debug("used builtins_hook")
         builtins.ev = self
 
-    def unregister(self, func):
-        self.log.debug(f"unregister {func}")
+    def unregister_by_id(self, _id):
+        self.log.debug(f"unregister_by_id '{_id}'")
+        if not isinstance(_id, int):
+            return
         s = a = 0
         for k, funcs in self.__events.items():
             for f in funcs:
-                if f is func:
+                if id(f) == _id:
+                    s += 1
+                    self.__events[k].remove(f)
+        for k, funcs in self.__async_events.items():
+            for f in funcs:
+                if id(f) == _id:
+                    a += 1
+                    self.__async_events[k].remove(f)
+        self.log.debug(f"unregister in {s + a} events; S:{s}; A:{a};")
+
+    def unregister(self, func):
+        self.log.debug(f"unregister '{func.__name__}' id: {id(func)}")
+        s = a = 0
+        for k, funcs in self.__events.items():
+            for f in funcs:
+                if f == func:
                     s += 1
                     self.__events[k].remove(func)
         for k, funcs in self.__async_events.items():
             for f in funcs:
-                if f is func:
+                if f == func:
                     a += 1
                     self.__async_events[k].remove(func)
         self.log.debug(f"unregister in {s + a} events; S:{s}; A:{a};")
@@ -116,8 +133,8 @@ class EventsSystem:
                 event_name in self.__events.keys() or
                 event_name in self.__lua_events.keys())
 
-    def register(self, event_name, event_func, async_event=False, lua=None):
-        self.log.debug(f"register(event_name='{event_name}', event_func='{event_func}', "
+    def register(self, event_name, event_func, async_event=False, lua=None, return_id=True):
+        self.log.debug(f"register(event_name='{event_name}', event_func='{event_func.__name__}'(id: {id(event_func)}), "
                        f"async_event={async_event}, lua_event={lua}):")
         if lua:
             if event_name not in self.__lua_events:
@@ -140,6 +157,8 @@ class EventsSystem:
                 self.__events[event_name] = []
             self.__events[event_name].append(event_func)
             self.log.debug("Register ok")
+        if return_id:
+            return id(event_func)
 
     async def call_as_events(self, *args, **kwargs):
         return await self.call_async_event(*args, **kwargs) + self.call_event(*args, **kwargs)

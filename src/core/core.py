@@ -18,7 +18,7 @@ from core import utils, __version__
 from core.Client import Client
 from core.tcp_server import TCPServer
 from core.udp_server import UDPServer
-from modules import PluginsLoader
+from modules import PluginsLoader, PermsSystem
 
 
 def calc_ticks(ticks, duration):
@@ -253,7 +253,7 @@ class Core:
         except Exception as e:
             self.log.error(f"Error in heartbeat: {e}")
 
-    async def kick_cmd(self, args):
+    async def _cmd_kick(self, args):
         if not len(args) > 0:
             return "Usage: kick <nick>|:<id> [reason]\nExamples:\n\tkick admin bad boy\n\tkick :0 bad boy"
         reason = "kicked by console."
@@ -295,7 +295,7 @@ class Core:
         tps = calc_ticks(ticks, d)
         half = self.target_tps // 2
         qw = self.target_tps // 4
-        if tps > half+qw:
+        if tps > half + qw:
             return f"<green><b>{tps:.2f}</b></green>"
         elif tps > half:
             return f"<yellow><b>{tps:.2f}</b></yellow>"
@@ -324,7 +324,7 @@ class Core:
             ticks_60s = deque(maxlen=60 * int(target_tps) + 1)
             console.add_command("tps", lambda _: self._cmd_tps(ticks_2s, ticks_5s, ticks_30s, ticks_60s),
                                 None, "Print TPS", {"tps": None})
-            _add_to_sleep = deque([0.0, 0.0, 0.0,], maxlen=3 * int(target_tps))
+            _add_to_sleep = deque([0.0, 0.0, 0.0, ], maxlen=3 * int(target_tps))
             # _t0 = []
 
             self.log.debug("tick system started")
@@ -372,19 +372,26 @@ class Core:
         except Exception as e:
             self.log.exception(e)
 
+    async def _parse_chat(self, event):
+        player = event['kwargs']['player']
+        message = event['kwargs']['message']
+
     async def main(self):
         self.tcp = self.tcp(self, self.server_ip, self.server_port)
         self.udp = self.udp(self, self.server_ip, self.server_port)
+        PermsSystem()
         console.add_command(
             "list",
             lambda x: f"Players list: {self.get_clients_list(True)}"
         )
-        console.add_command("kick", self.kick_cmd, "kick - Kick user\n"
-                                                   "Usage: kick NICK|:{ID} [REASON]\n"
-                                                   "Examples:\n"
-                                                   "  <white>></white> <b><skyblue>kick admin bad boy</skyblue></b>\n"
-                                                   "  <white>></white> <b><skyblue>kick :0 bad boy</skyblue></b>",
+        ev.call_event("add_perm_to_alias", "cmd.kick")
+        console.add_command("kick", self._cmd_kick, "kick - Kick user\n"
+                                                    "Usage: kick NICK|:{ID} [REASON]\n"
+                                                    "Examples:\n"
+                                                    "  <white>></white> <b><skyblue>kick admin bad boy</skyblue></b>\n"
+                                                    "  <white>></white> <b><skyblue>kick :0 bad boy</skyblue></b>",
                             "kick user", {"kick": "<playerlist>"})
+        ev.register("onChatReceive", self._parse_chat)
 
         pl_dir = "plugins"
         self.log.debug("Initializing PluginsLoaders...")
@@ -414,18 +421,19 @@ class Core:
                 self.log.info(i18n.core_mods_loaded.format(len_mods, round(self.mods_list[0] / MB, 2)))
             self.log.info(i18n.init_ok)
 
-            await self.heartbeat(True)
-            for i in range(int(config.Game["players"] * 4)):  # * 4 For down sock and buffer.
-                self.clients.append(None)
+            await self.heartbeat(True)  # Check
+
+            self.clients = [None] * config.Game["players"] * 4  # * 4 For down sock and buffer.
             tasks = []
             ev.register("serverTick_1s", self._check_alive)
             ev.register("serverTick_1s", self._send_online)
             # ev.register("serverTick_5s", self.heartbeat)
             f_tasks = [self.tcp.start, self.udp._start, console.start, self._tick, self.heartbeat]
             if config.RCON['enabled']:
-                console.rcon.version = f"KuiToi {__version__}"
-                rcon = console.rcon(config.RCON['password'], config.RCON['server_ip'], config.RCON['server_port'])
-                f_tasks.append(rcon.start)
+                self.log.warning("RCON not available. yet.")
+            #     console.rcon.version = f"KuiToi {__version__}"
+            #     rcon = console.rcon(config.RCON['password'], config.RCON['server_ip'], config.RCON['server_port'])
+            #     f_tasks.append(rcon.start)
             for task in f_tasks:
                 tasks.append(asyncio.create_task(task()))
             t = asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)

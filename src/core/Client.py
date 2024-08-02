@@ -434,10 +434,8 @@ class Client:
         lua_data = ev.call_lua_event("onVehicleSpawn", self.cid, car_id, car_data[car_data.find("{"):])
         if 1 in lua_data:
             allow = False
-        ev_data_list = ev.call_event("onCarSpawn", data=car_json, car_id=car_id, player=self)
-        d2 = await ev.call_async_event("onCarSpawn", data=car_json, car_id=car_id, player=self)
-        ev_data_list.extend(d2)
-        for ev_data in ev_data_list:
+        event_data = await ev.call_as_events("onCarSpawn", data=car_json, car_id=car_id, player=self)
+        for ev_data in event_data:
             self.log.debug(ev_data)
             # TODO: handle event onCarSpawn
             pass
@@ -464,6 +462,9 @@ class Client:
                 "pos": {}
             }
             await self._send(pkt, to_all=True, to_self=True)
+            if self.focus_car == -1:
+                self._focus_car = car_id
+            await ev.call_as_events("onCarSpawned", data=car_json, car_id=car_id, player=self)
         else:
             await self._send(pkt)
             des = f"Od:{self.cid}-{car_id}"
@@ -482,13 +483,9 @@ class Client:
 
         if car_id != -1 and self._cars[car_id]:
 
-            ev.call_lua_event("onVehicleDeleted", self.cid, car_id)
-
             admin_allow = False  # Delete from admin, for example...
-            ev_data_list = ev.call_event("onCarDelete", data=self._cars[car_id], car_id=car_id, player=self)
-            d2 = await ev.call_async_event("onCarDelete", data=self._cars[car_id], car_id=car_id, player=self)
-            ev_data_list.extend(d2)
-            for ev_data in ev_data_list:
+            event_data = await ev.call_as_events("onCarDelete", data=self._cars[car_id], car_id=car_id, player=self)
+            for ev_data in event_data:
                 self.log.debug(ev_data)
                 # TODO: handle event onCarDelete
                 pass
@@ -503,8 +500,9 @@ class Client:
                     self._cars[unicycle_id] = None
                 self._cars[car_id] = None
                 await self._send(f"Od:{self.cid}-{car_id}", to_all=True, to_self=True)
+                await ev.call_as_events("onCarDeleted", data=self._cars[car_id], car_id=car_id, player=self)
+                ev.call_lua_event("onVehicleDeleted", self.cid, car_id)
                 self.log.debug(f"Deleted car: car_id={car_id}")
-
         else:
             self.log.debug(f"Invalid car: car_id={car_id}")
 
@@ -660,26 +658,23 @@ class Client:
                 writer = None
                 to_all = True
                 to_self = True
-                message = msg
-                if event is False:
-                    need_send = False
-                    continue
-                if isinstance(event, str):
-                    to_all = False
-                    message = event
-                elif isinstance(event, int):
-                    if event == 0:
+                message = f"{self.nick}: {msg}"
+                match event:
+                    case False | 0:
                         need_send = False
                         continue
-                else:
-                    message = event["message"]
-                    to_all = event.get("to_all")
-                    to_self = event.get("to_self")
-                    to_client = event.get("to")
-                    if to_client:
-                        writer = to_client._writer
+                    case {"message": message, **setting}:
+                        message = message
+                        to_all = setting.get("to_all", True)
+                        to_self = setting.get("to_self", True)
+                        to_client = setting.get("to")
+                        if to_client:
+                            writer = to_client._writer
+                    case _:
+                        self.log.error(f"[onChatReceive] Bad data returned from event: {event}")
+
                 if config.Options['log_chat']:
-                    self.log.info(f"[local] {message}" if to_all else f"{self.nick}: {msg}")
+                    self.log.info(f"[local] {message}" if not to_all else message)
                 await self._send(f"C:{message}", to_all=to_all, to_self=to_self, writer=writer)
                 need_send = False
             except KeyError:
@@ -695,13 +690,16 @@ class Client:
         if data is None:
             self.__alive = False
             return
+        if len(data) == 0:
+            self.__alive = False
+            return
 
         _bytes = False
         try:
             data = data.decode()
         except UnicodeDecodeError:
             _bytes = True
-            self.log.error(f"UnicodeDecodeError: {data}")
+            self.log.error("UnicodeDecodeError")
 
         if data[0] in ['V', 'W', 'Y', 'E', 'N']:
             await self._send(data, to_all=True, to_self=False)

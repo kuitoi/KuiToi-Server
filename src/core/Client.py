@@ -62,6 +62,7 @@ class Client:
         self._connect_time = 0
         self._last_position = {}
         self._last_recv = time.monotonic()
+        self.__tpt_id = 0
 
     @property
     def _writer(self):
@@ -227,7 +228,7 @@ class Client:
             await writer.drain()
             return True
         except Exception as e:
-            self.log.debug(f'[TCP] Disconnected: {e}')
+            self.log.debug(f'[TCP] Disconnected: {e}; {writer=}')
             self.__alive = False
             await self._remove_me()
             return False
@@ -299,11 +300,19 @@ class Client:
                 data = f.read(min(MB, real_size - total_sent))  # read data in chunks of 1MB or less
                 try:
                     writer.write(data)
-                    await writer.drain()
+                    async with asyncio.timeout(120):  # ~70kb/s
+                        await writer.drain()
                     # self.log.debug(f"[{who}] Sent {len(data)} bytes.")
-                except ConnectionError:
+                except TimeoutError:
+                    self.log.debug(f"[{who}] TimeoutError; Sock: {writer}")
+                    self.log.error("TimeoutError")
+                    await self._send("ETimeoutError")
                     self.__alive = False
+                    break
+                except ConnectionError:
+                    await self._send("EConnectionError")
                     self.log.debug(f"[{who}] Disconnected.")
+                    self.__alive = False
                     break
                 total_sent += len(data)
 
@@ -313,7 +322,7 @@ class Client:
                     expected_time = total_sent / (speed_limit * MB)
                     if expected_time > elapsed_time:
                         await asyncio.sleep(expected_time - elapsed_time)
-
+            self.log.debug(f"[{who}] Ready.")
         return total_sent
 
     async def _sync_resources(self):
@@ -333,7 +342,7 @@ class Client:
                         size = mod['size']
                         self.log.debug("File is accept.")
                         break
-                self.log.debug(f"Mode size: {size}")
+                self.log.debug(f"Mod size: {size}")
                 if size == -1:
                     await self._send(b"CO")
                     await self.kick(f"Not allowed mod: " + file)
@@ -350,7 +359,7 @@ class Client:
                     while self._core.lock_upload:
                         await asyncio.sleep(.2)
                     self._core.lock_upload = True
-                speed = config.Options["speed_limit"]
+                speed = config.Options["speed_limit"] or 10*B
                 if speed:
                     speed = speed / 2
                 half_size = math.floor(size / 2)
@@ -372,14 +381,14 @@ class Client:
                 self.log.debug(f"SplitLoad_0: {sl0}; SplitLoad_1: {sl1}; At all ({ok}): Sent: {sent}; Lost: {lost}")
                 if not ok:
                     self.__alive = False
-                    self.log.error(i18n.client_mod_sent_error.format(repr(file)))
+                    e = i18n.client_mod_sent_error.format(repr(file))
+                    await self._send(f"E{e}")
+                    self.log.error(e)
                     return
             elif data.startswith(b"SR"):
                 path_list = ''
                 size_list = ''
-                for mod in self._core.mods_list:
-                    if type(mod) == int:
-                        continue
+                for mod in self._core.mods_list[1:]:
                     path_list += f"{mod['path']};"
                     size_list += f"{mod['size']};"
                 mod_list = path_list + size_list
@@ -389,6 +398,7 @@ class Client:
                 else:
                     await self._send(mod_list)
             elif data == b"Done":
+                self.log.debug("recv Done")
                 await self._send(f"M/levels/{config.Game['map']}/info.json")
                 break
         return
@@ -767,7 +777,6 @@ class Client:
         self.udp_pps = self._udp_count_recv
         self._tpc_count_recv = 0
         self._udp_count_recv = 0
-        self.log.debug("PPS")
         if self.tcp_pps > self._core.target_tps or self.udp_pps > self._core.target_tps:
             self.log.warning(f"PPS > TPS; PPS: TPC: {self.tcp_pps}, UDP: {self.udp_pps}")
 
@@ -830,9 +839,10 @@ class Client:
             ev.call_lua_event("onPlayerDisconnect", self.cid)
             ev.call_event("onPlayerDisconnect", player=self)
             await ev.call_async_event("onPlayerDisconnect", player=self)
-            ev.unregister_by_id(self.__tpt_id)  # self.__tick_player_tcp
-            ev.unregister_by_id(self.__tpu_id)  # self.__tick_player_udp
-            ev.unregister_by_id(self.__tpp_id)  # self._tick_pps
+            if self.__tpt_id:
+                ev.unregister_by_id(self.__tpt_id)  # self.__tick_player_tcp
+                ev.unregister_by_id(self.__tpu_id)  # self.__tick_player_udp
+                ev.unregister_by_id(self.__tpp_id)  # self._tick_pps
             gt = round((time.monotonic() - self._connect_time) / 60, 2)
             self.log.info(i18n.client_player_disconnected.format(gt))
             self._core.clients[self.cid] = None

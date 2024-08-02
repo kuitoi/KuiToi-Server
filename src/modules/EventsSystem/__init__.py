@@ -38,6 +38,8 @@ class EventsSystem:
             "onChangePosition": [],  # Only sync, no handler
             "onPlayerDisconnect": [],  # No handler
             "onServerStopped": [],  # No handler
+            "onCarSpawned": [],  # No handler
+            "onCarDeleted": [],  # No handler
             "serverTick": [],
             "serverTick_0.5s": [],
             "serverTick_1s": [],
@@ -60,8 +62,10 @@ class EventsSystem:
             "onCarReset": [],
             "onCarChanged": [],
             "onCarFocusMove": [],
-            "onPlayerDisconnect": [],
             "onServerStopped": [],
+            "onPlayerDisconnect": [],
+            "onCarSpawned": [],
+            "onCarDeleted": [],
             "serverTick": [],
             "serverTick_0.5s": [],
             "serverTick_1s": [],

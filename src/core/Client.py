@@ -355,11 +355,10 @@ class Client:
                     speed = speed / 2
                 half_size = math.floor(size / 2)
                 t = time.monotonic()
-                uploads = [
-                    self._split_load(0, half_size, False, file, speed),
-                    self._split_load(half_size, size, True, file, speed)
-                ]
-                sl0, sl1 = await asyncio.gather(*uploads)
+                async with asyncio.TaskGroup() as tg:
+                    sl0 = tg.create_task(self._split_load(0, half_size, False, file, speed))
+                    sl1 = tg.create_task(self._split_load(half_size, size, True, file, speed))
+                sl0, sl1 = sl0.result(), sl1.result()
                 tr = (time.monotonic() - t) or 0.0001
                 if self._core.lock_upload:
                     self._core.lock_upload = False
@@ -691,7 +690,7 @@ class Client:
             self.__alive = False
             return
         if len(data) == 0:
-            self.__alive = False
+            await self.kick("Bad data from client")
             return
 
         _bytes = False
@@ -768,6 +767,7 @@ class Client:
         self.udp_pps = self._udp_count_recv
         self._tpc_count_recv = 0
         self._udp_count_recv = 0
+        self.log.debug("PPS")
         if self.tcp_pps > self._core.target_tps or self.udp_pps > self._core.target_tps:
             self.log.warning(f"PPS > TPS; PPS: TPC: {self.tcp_pps}, UDP: {self.udp_pps}")
 
@@ -810,9 +810,9 @@ class Client:
         await self._send(f"P{self.cid}")  # Send clientID
         await self._sync_resources()
         ev.call_lua_event("onPlayerJoining", self.cid)
-        ev.register("serverTick", self.__tick_player_tcp)
-        ev.register("serverTick", self.__tick_player_udp)
-        ev.register("serverTick_1s", self._tick_pps)
+        self.__tpt_id = ev.register("serverTick", self.__tick_player_tcp)
+        self.__tpu_id = ev.register("serverTick", self.__tick_player_udp)
+        self.__tpp_id = ev.register("serverTick_1s", self._tick_pps)
         await self._recv()
 
     async def _remove_me(self):
@@ -830,18 +830,22 @@ class Client:
             ev.call_lua_event("onPlayerDisconnect", self.cid)
             ev.call_event("onPlayerDisconnect", player=self)
             await ev.call_async_event("onPlayerDisconnect", player=self)
-            ev.unregister(self.__tick_player_tcp)
-            ev.unregister(self.__tick_player_udp)
-            ev.unregister(self._tick_pps)
+            ev.unregister_by_id(self.__tpt_id)  # self.__tick_player_tcp
+            ev.unregister_by_id(self.__tpu_id)  # self.__tick_player_udp
+            ev.unregister_by_id(self.__tpp_id)  # self._tick_pps
             gt = round((time.monotonic() - self._connect_time) / 60, 2)
             self.log.info(i18n.client_player_disconnected.format(gt))
             self._core.clients[self.cid] = None
             del self._core.clients_by_id[self.cid]
             del self._core.clients_by_nick[self.nick]
+            self.log.debug(f"TPC: "
+                           f"Recv: {self._tpc_count_total_recv}; {self._tpc_size_total_recv / KB:.4f}kb; "
+                           f"Sent: {self._tpc_count_total_sent}; {self._tpc_size_total_sent / KB:.4f}kb;")
+            self.log.debug(f"UDP: "
+                           f"Recv: {self._udp_count_total_recv}; {self._udp_size_total_recv / KB:.4f}kb; "
+                           f"Sent: {self._udp_count_total_sent}; {self._udp_size_total_sent / KB:.4f}kb;")
         else:
             self.log.debug(f"Removing client; Closing connection...")
-        self.log.debug(f"TPC: Recv: {self._tpc_count_total_recv}; {self._tpc_size_total_recv / KB:.4f}kb; Sent: {self._tpc_count_total_sent}; {self._tpc_size_total_sent / KB:.4f}kb;")
-        self.log.debug(f"UDP: Recv: {self._udp_count_total_recv}; {self._udp_size_total_recv / KB:.4f}kb; Sent: {self._udp_count_total_sent}; {self._udp_size_total_sent / KB:.4f}kb;")
         await asyncio.sleep(0.001)
         try:
             self.__writer.close()

@@ -126,9 +126,10 @@ class TCPServer:
                 result, client = await self.auth_client(reader, writer)
                 if result:
                     await client._looper()
-                return result, client
+                return "U", client
             case "D":
                 await self.set_down_rw(reader, writer)
+                return "D", None
             case "P":
                 writer.write(b"P")
                 await writer.drain()
@@ -137,34 +138,28 @@ class TCPServer:
                 self.log.warning(f"Unknown code: {code}")
                 self.log.warning("Report about that!")
                 writer.close()
-        return False, None
+        return "E", None
 
     async def handle_client(self, reader, writer):
-        while self.run:
-            self._connections.add(writer)
-            try:
-                ip = writer.get_extra_info('peername')[0]
-                if self.rl.is_banned(ip):
-                    await self.rl.notify(ip, writer)
-                    writer.close()
-                    break
-                data = await reader.read(1)
-                if not data:
-                    break
-                code = data.decode()
-                self.log.debug(f"Received {code!r} from {writer.get_extra_info('sockname')!r}")
-                # task = asyncio.create_task(self.handle_code(code, reader, writer))
-                # await asyncio.wait([task], return_when=asyncio.FIRST_EXCEPTION)
-                _, cl = await self.handle_code(code, reader, writer)
-                self.log.debug(f"cl returned: {cl}")
-                if cl:
-                    await cl._remove_me()
-                break
-            except Exception as e:
-                self.log.error("Error while handling connection...")
-                self.log.exception(e)
-                traceback.print_exc()
-                break
+        self._connections.add(writer)
+        try:
+            ip = writer.get_extra_info('peername')[0]
+            if self.rl.is_banned(ip):
+                await self.rl.notify(ip, writer)
+                writer.close()
+            data = await reader.read(1)
+            if not data:
+                return
+            code = data.decode()
+            self.log.debug(f"Received {code!r} from {writer.get_extra_info('sockname')!r}")
+            _type, cl = await self.handle_code(code, reader, writer)
+            self.log.debug(f"[{_type}] cl returned: {cl}")
+            if cl:
+                await cl._remove_me()
+        except Exception as e:
+            self.log.error("Error while handling connection...")
+            self.log.exception(e)
+            traceback.print_exc()
 
     async def start(self):
         self.log.debug("Starting TCP server.")
@@ -172,17 +167,12 @@ class TCPServer:
         try:
             self.server = await asyncio.start_server(self.handle_client, self.host, self.port,
                                                      backlog=int(config.Game["players"] * 4))
-            self.log.debug(f"TCP server started on {self.server.sockets[0].getsockname()!r}")
-            while True:
-                async with self.server:
-                    await self.server.serve_forever()
+            async with self.server:
+                self.log.debug(f"TCP server started on {self.server.sockets[0].getsockname()!r}")
+                await self.server.serve_forever()
         except OSError as e:
             self.log.error(i18n.core_bind_failed.format(e))
             raise e
-        except KeyboardInterrupt:
-            pass
-        except ConnectionResetError as e:
-            self.log.debug(f"ConnectionResetError {e}")
         except Exception as e:
             self.log.exception(e)
             raise e

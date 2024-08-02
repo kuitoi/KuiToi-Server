@@ -10,7 +10,7 @@ __title__ = 'KuiToi-Server'
 __description__ = 'BeamingDrive Multiplayer server compatible with BeamMP clients.'
 __url__ = 'https://github.com/kuitoi/kuitoi-Server'
 __version__ = '0.4.8'
-__build__ = 2679  # Я это считаю лог файлами
+__build__ = 2747  # Я это считаю лог файлами
 __author__ = 'SantaSpeen'
 __author_email__ = 'admin@anidev.ru'
 __license__ = "FPA"
@@ -19,6 +19,7 @@ __copyright__ = 'Copyright 2024 © SantaSpeen (Maxim Khomutov)'
 import asyncio
 import builtins
 import sys
+import time
 import webbrowser
 
 import prompt_toolkit.shortcuts as shortcuts
@@ -30,15 +31,17 @@ from modules import ConfigProvider, EventsSystem
 from modules import Console
 from modules import MultiLanguage
 
+builtins.Ts = time.monotonic()
 args, _ = parser.parse_known_args()
 if args.version:
     print(f"{__title__}:\n\tVersion: {__version__}\n\tBuild: {__build__}")
     exit(0)
 
 loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+# loop.set_task_factory(asyncio.eager_task_factory)
+asyncio.set_event_loop(loop)
 log = get_logger("core.init")
 
 # Config file init

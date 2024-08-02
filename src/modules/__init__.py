@@ -6,8 +6,9 @@
 # Licence: FPA
 # (c) kuitoi.su 2023
 from .ConfigProvider import ConfigProvider, Config
-from .ConsoleSystem import Console
 from .EventsSystem import EventsSystem
+from .ConsoleSystem import Console
 from .PluginsLoader import PluginsLoader
-from .RateLimiter import RateLimiter
 from .i18n import MultiLanguage
+from .RateLimiter import RateLimiter
+from .PermsSystem import PermsSystem

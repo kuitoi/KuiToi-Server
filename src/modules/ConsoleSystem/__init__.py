@@ -32,9 +32,10 @@ class BadCompleter(Exception): ...
 
 
 class MyNestedCompleter(Completer):
-    def __init__(self, options, ignore_case=True):
+    def __init__(self, options, ignore_case=True, on_none=None):
         self.options = self._from_nested_dict(options)
         self.ignore_case = ignore_case
+        self.on_none = on_none
 
     def __repr__(self) -> str:
         return f"MyNestedCompleter({self.options!r}, ignore_case={self.ignore_case!r})"
@@ -76,6 +77,8 @@ class MyNestedCompleter(Completer):
         if " " in text:
             first_term = text.split()[0]
             completer = self.options.get(first_term)
+            if completer is None:
+                completer = self.on_none
 
             # If we have a sub completer, use this for the completions.
             if completer is not None:
@@ -104,6 +107,8 @@ class MyNestedCompleter(Completer):
 
 
 players_completer = MyNestedCompleter({})
+builtins.Completer = MyNestedCompleter
+builtins.players_completer = players_completer
 
 
 class Console:

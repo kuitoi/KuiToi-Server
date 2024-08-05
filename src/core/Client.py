@@ -287,31 +287,31 @@ class Client:
                 await self._tpc_put(None)
 
     async def _split_load(self, start, end, d_sock, filename, speed_limit=None):
-        real_size = end - start
+        size = end - start
         writer = self._down_sock[1] if d_sock else self.__writer
-        who = 'dwn' if d_sock else 'srv'
-        self.log.debug(f"[{who}] Real size: {real_size / MB}mb; {real_size == end}, {real_size * 2 == end}")
+        who = 'DSock' if d_sock else 'MSock'
+        self.log.debug(f"[{who}] Started; start,end={(start, end)}")
 
         with open(filename, 'rb') as f:
             f.seek(start)
             total_sent = 0
             start_time = time.monotonic()
-            while total_sent < real_size:
-                data = f.read(min(MB, real_size - total_sent))  # read data in chunks of 1MB or less
+            while total_sent < size:
+                if (size - total_sent) == 0:
+                    break
+                data = f.read(min(MB, size - total_sent))  # read data in chunks of 1MB or less
                 try:
                     writer.write(data)
-                    async with asyncio.timeout(120):  # ~70kb/s
+                    async with asyncio.timeout(120):  # ~100kb/s
                         await writer.drain()
                     # self.log.debug(f"[{who}] Sent {len(data)} bytes.")
                 except TimeoutError:
                     self.log.debug(f"[{who}] TimeoutError; Sock: {writer}")
                     self.log.error("TimeoutError")
-                    await self._send("ETimeoutError")
                     self.__alive = False
                     break
                 except ConnectionError:
-                    await self._send("EConnectionError")
-                    self.log.debug(f"[{who}] Disconnected.")
+                    self.log.debug(f"[{who}] Disconnected; Sock: {writer}")
                     self.__alive = False
                     break
                 total_sent += len(data)
@@ -322,7 +322,7 @@ class Client:
                     expected_time = total_sent / (speed_limit * MB)
                     if expected_time > elapsed_time:
                         await asyncio.sleep(expected_time - elapsed_time)
-            self.log.debug(f"[{who}] Ready.")
+            self.log.debug(f"[{who}] Ready. {total_sent=}")
         return total_sent
 
     async def _sync_resources(self):
@@ -342,10 +342,10 @@ class Client:
                         size = mod['size']
                         self.log.debug("File is accept.")
                         break
-                self.log.debug(f"Mod size: {size}")
+                # self.log.debug(f"Mod size: {size}")
                 if size == -1:
                     await self._send(b"CO")
-                    await self.kick(f"Not allowed mod: " + file)
+                    await self.kick(f"Requested not allowed file: " + file)
                     return
                 await self._send(b"AG")
                 t = 0
@@ -353,17 +353,18 @@ class Client:
                     await asyncio.sleep(0.1)
                     t += 1
                     if t > 50:
-                        await self.kick("Missing download socket")
+                        await self.kick("Error (Missing DSock)")
                         return
                 if config.Options['use_queue']:
                     while self._core.lock_upload:
                         await asyncio.sleep(.2)
                     self._core.lock_upload = True
-                speed = config.Options["speed_limit"] or 10*B
+                speed = config.Options["speed_limit"] or 25*B
                 if speed:
                     speed = speed / 2
-                half_size = math.floor(size / 2)
+                half_size = size // 2
                 t = time.monotonic()
+                self.log.debug(f"Sending: {size=}; sl0={(0, half_size)}; sl1={(half_size, size)}")
                 async with asyncio.TaskGroup() as tg:
                     sl0 = tg.create_task(self._split_load(0, half_size, False, file, speed))
                     sl1 = tg.create_task(self._split_load(half_size, size, True, file, speed))
@@ -378,7 +379,7 @@ class Client:
                 sent = sl0 + sl1
                 ok = sent == size
                 lost = size - sent
-                self.log.debug(f"SplitLoad_0: {sl0}; SplitLoad_1: {sl1}; At all ({ok}): Sent: {sent}; Lost: {lost}")
+                self.log.debug(f"Sent; sl_0: {sl0}; sl_1: {sl1}; size==sent is {ok}: {size}-{sent}={lost}")
                 if not ok:
                     self.__alive = False
                     e = i18n.client_mod_sent_error.format(repr(file))

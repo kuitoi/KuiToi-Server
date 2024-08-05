@@ -136,7 +136,7 @@ class Core:
         try:
             for client in self.clients:
                 ca = f"Ss{len(self.clients_by_id)}/{config.Game['players']}:{self.get_clients_list()}"
-                if not client or not client.alive:
+                if not client or not client.alive or not client.ready:
                     continue
                 await client._send(ca)
         except Exception as e:

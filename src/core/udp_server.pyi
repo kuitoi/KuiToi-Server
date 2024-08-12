@@ -22,7 +22,6 @@ class UDPServer(asyncio.DatagramTransport):
         self.host = host
         self.port = port
         self.run = False
-        # self.transport: DatagramTransport = None
     def connection_made(self, transport: DatagramTransport): ...
     async def handle_datagram(self, data: bytes, addr: Tuple[str, int]):
     def datagram_received(self, data: bytes, addr: Tuple[str, int]): ...

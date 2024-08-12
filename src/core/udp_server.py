@@ -31,11 +31,16 @@ class UDPServer(asyncio.DatagramTransport):
     async def handle_datagram(self, packet, addr):
         try:
             cid = packet[0] - 1
+            if cid > config.Game['players'] * 4:
+                return
             client = self._core.get_client(cid=cid)
             if client:
                 if not client.alive:
                     client.log.debug(f"Still sending UDP data: {packet}")
                 if client._udp_sock != (self.transport, addr):
+                    self.log.debug(f"udp_addr={addr[0]}; main_addr={client.addr}")
+                    if addr[0] != client.addr:
+                        self.log.warning(f"udp_addr != main_addr. Is this bug?")
                     client._udp_sock = (self.transport, addr)
                     self.log.debug(f"Set UDP Sock for CID: {cid}")
                 await client._udp_put(packet)
